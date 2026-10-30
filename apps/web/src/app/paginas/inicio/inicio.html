@@ -1,0 +1,167 @@
+<div class="nt-encabezado">
+  <div>
+    <h1>{{ saludo() }}, {{ nombre() }}</h1>
+    <p class="fecha">{{ fechaLarga }}</p>
+  </div>
+  <div class="nt-encabezado-acciones">
+    @if (puedeOperacion()) {
+      <p-button
+        label="Nueva orden de retiro"
+        icon="pi pi-plus"
+        routerLink="/operacion/ordenes-retiro/nuevo"
+      />
+    }
+  </div>
+</div>
+
+@if (datos(); as d) {
+  <div class="indicadores">
+    <a class="indicador" routerLink="/operacion/ordenes-retiro">
+      <span class="icono azul"><i class="pi pi-file-export"></i></span>
+      <span class="valor">{{ d.contadores.retirosAbiertos }}</span>
+      <span class="etiqueta">Órdenes de retiro activas</span>
+    </a>
+    <a class="indicador" routerLink="/operacion/ordenes-carga/nuevo">
+      <span class="icono ambar"><i class="pi pi-box"></i></span>
+      <span class="valor">{{ d.contadores.retirosSinCarga }}</span>
+      <span class="etiqueta">Sin orden de carga</span>
+    </a>
+    <a class="indicador" routerLink="/operacion/rendiciones/nuevo">
+      <span class="icono verde"><i class="pi pi-receipt"></i></span>
+      <span class="valor">{{ d.contadores.cargasPorRendir }}</span>
+      <span class="etiqueta">Cargas por rendir</span>
+      @if (d.contadores.cargasSinConfirmar) {
+        <span class="nota">{{ d.contadores.cargasSinConfirmar }} sin guías</span>
+      }
+    </a>
+    <a class="indicador" routerLink="/operacion/vales-dinero">
+      <span class="icono violeta"><i class="pi pi-wallet"></i></span>
+      <span class="valor">{{ d.contadores.montoValesDineroMes | pesos }}</span>
+      <span class="etiqueta"
+        >Anticipos del mes ({{ d.contadores.valesDineroMes }}
+        {{ d.contadores.valesDineroMes === 1 ? 'vale' : 'vales' }})</span
+      >
+    </a>
+    <a class="indicador" routerLink="/operacion/vales-combustible">
+      <span class="icono cian"><i class="pi pi-gauge"></i></span>
+      <span class="valor">{{ d.contadores.combustibleMesLitros | numero }} L</span>
+      <span class="etiqueta">Combustible del mes</span>
+    </a>
+    <a
+      class="indicador"
+      routerLink="/mantenedores/rutas-tarifas"
+      [class.alerta]="d.contadores.tarifasVencidas > 0"
+    >
+      <span class="icono rojo"><i class="pi pi-map"></i></span>
+      <span class="valor">{{ d.contadores.tarifasVencidas }}</span>
+      <span class="etiqueta">Tarifas vencidas</span>
+    </a>
+  </div>
+
+  <div class="paneles">
+    <section class="nt-tarjeta">
+      <div class="nt-tarjeta-titulo">
+        <h2>Órdenes de retiro sin orden de carga</h2>
+        <small>{{ d.retirosSinCarga.length }}</small>
+      </div>
+      @for (r of d.retirosSinCarga; track r.id) {
+        <div class="fila">
+          <a [routerLink]="['/operacion/ordenes-retiro', r.id]" class="num"
+            >N° {{ r.numero | correlativo }}</a
+          >
+          <div class="detalle">
+            <strong>{{ r.cliente }}</strong>
+            <span>{{ r.origen }} → {{ r.destino }} · {{ r.conductor }} · {{ r.camion }}</span>
+          </div>
+          <span class="fecha-fila">{{ r.fechaCarga ?? r.fecha | fecha }}</span>
+          @if (puedeOperacion()) {
+            <p-button
+              label="Cargar"
+              icon="pi pi-arrow-right"
+              iconPos="right"
+              size="small"
+              [text]="true"
+              routerLink="/operacion/ordenes-carga/nuevo"
+              [queryParams]="{ retiro: r.id }"
+            />
+          }
+        </div>
+      } @empty {
+        <p class="vacio">
+          <i class="pi pi-check-circle"></i> Todas las órdenes abiertas tienen orden de carga.
+        </p>
+      }
+    </section>
+
+    <section class="nt-tarjeta">
+      <div class="nt-tarjeta-titulo">
+        <h2>Órdenes de carga por rendir</h2>
+        <small>{{ d.cargasPorRendir.length }}</small>
+      </div>
+      @for (c of d.cargasPorRendir; track c.id) {
+        <div class="fila">
+          <a [routerLink]="['/operacion/ordenes-carga', c.id]" class="num"
+            >N° {{ c.numero | correlativo }}</a
+          >
+          <div class="detalle">
+            <strong>{{ c.cliente }}</strong>
+            <span
+              >{{ c.conductor }} · {{ c.patenteCamion }} · HR {{ c.hojaRuta | correlativo }}</span
+            >
+          </div>
+          <span class="fecha-fila">{{ c.totalNeto | pesos }}</span>
+          @if (puedeFinanzas()) {
+            <p-button
+              label="Rendir"
+              icon="pi pi-arrow-right"
+              iconPos="right"
+              size="small"
+              [text]="true"
+              routerLink="/operacion/rendiciones/nuevo"
+              [queryParams]="{ carga: c.id }"
+            />
+          }
+        </div>
+      } @empty {
+        <p class="vacio">
+          <i class="pi pi-check-circle"></i> No hay órdenes de carga pendientes de rendición.
+        </p>
+      }
+    </section>
+
+    <section class="nt-tarjeta ancho">
+      <div class="nt-tarjeta-titulo">
+        <h2>Vencimientos de móviles y licencias</h2>
+        <small>Vencidos y próximos</small>
+      </div>
+      @for (v of d.vencimientos; track v.tipo + v.referencia) {
+        <div class="fila">
+          <p-tag [value]="textoDias(v.dias)" [severity]="severidad(v.dias)" class="etiqueta-dias" />
+          <div class="detalle">
+            <strong>{{ v.tipo }} · {{ v.referencia }}</strong>
+            <span>{{ v.detalle }}</span>
+          </div>
+          <span class="fecha-fila">{{ v.fecha | fecha }}</span>
+          <p-button
+            icon="pi pi-pencil"
+            size="small"
+            [text]="true"
+            [routerLink]="v.ruta"
+            ariaLabel="Ir al mantenedor"
+          />
+        </div>
+      } @empty {
+        <p class="vacio">
+          <i class="pi pi-check-circle"></i> No hay documentos vencidos ni por vencer. Registre las
+          fechas de vencimiento en Móviles y Conductores para recibir alertas.
+        </p>
+      }
+    </section>
+  </div>
+} @else {
+  <div class="indicadores">
+    @for (i of [1, 2, 3, 4, 5, 6]; track i) {
+      <p-skeleton height="7rem" borderRadius="12px" />
+    }
+  </div>
+}

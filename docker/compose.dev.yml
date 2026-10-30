@@ -1,0 +1,24 @@
+# Entorno de desarrollo: solo PostgreSQL. La API y la web corren en la máquina con recarga en vivo.
+name: nexustrack-dev
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nexustrack
+      POSTGRES_PASSWORD: nexustrack
+      POSTGRES_DB: nexustrack
+      TZ: America/Santiago
+      PGTZ: America/Santiago
+    ports:
+      - '5442:5432'
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U nexustrack -d nexustrack']
+      interval: 3s
+      timeout: 3s
+      retries: 20
+volumes:
+  db-data:

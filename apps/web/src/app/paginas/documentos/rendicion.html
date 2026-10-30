@@ -1,0 +1,380 @@
+@if (creando() && !carga()) {
+  <nt-barra-documento titulo="Nueva rendición" volver="/operacion/rendiciones" />
+  <nt-selector-padre
+    titulo="Órdenes de carga por rendir"
+    instrucciones="Seleccione la orden de carga a rendir. Aparecen las órdenes abiertas que ya tienen guías registradas."
+    [filas]="candidatos()"
+    [columnas]="columnasCargas"
+    [cargando]="cargandoCandidatos()"
+    (elegir)="elegirCarga($event)"
+  />
+} @else {
+  <nt-barra-documento
+    titulo="Rendición de fletes"
+    [subtitulo]="resumen() ? resumen()!.conductor + ' · ' + resumen()!.cliente : ''"
+    [numero]="dto()?.numero ?? null"
+    [estado]="dto()?.estado ?? null"
+    [recurso]="'rendiciones/' + dto()?.id"
+    volver="/operacion/rendiciones"
+    [editable]="editable() && !!form()"
+    [anulable]="dto()?.estado === 'EMITIDO'"
+    [guardando]="guardando()"
+    (guardar)="guardar()"
+    (anular)="anular($event)"
+  />
+
+  @if (dto()?.estado === 'ANULADO') {
+    <p-message severity="error" class="aviso"
+      >Rendición anulada. Motivo: {{ dto()?.motivoAnulacion }}</p-message
+    >
+  }
+
+  @if (cabecera(); as c) {
+    <section class="nt-tarjeta">
+      <div class="nt-tarjeta-titulo">
+        <h2>Orden de carga N° {{ c.numero | correlativo }}</h2>
+      </div>
+      <div class="nt-grilla">
+        <nt-dato etiqueta="Tramo" [valor]="c.tramo" class="nt-ancho-2" />
+        <nt-dato
+          etiqueta="Fecha de carga"
+          [valor]="(c.fechaCarga | fecha) + (c.horaCarga ? ' ' + c.horaCarga : '')"
+        />
+        <nt-dato etiqueta="Packing de carga" [valor]="c.packingCarga" />
+        <nt-dato etiqueta="Patente camión" [valor]="c.patenteCamion" />
+        <nt-dato etiqueta="Patente remolque" [valor]="c.patenteRemolque" />
+      </div>
+    </section>
+  }
+
+  @if (resumen(); as r) {
+    <nt-resumen-retiro [retiro]="r" />
+  }
+
+  @if (form(); as f) {
+    <section class="nt-tarjeta">
+      <div class="nt-tarjeta-titulo"><h2>Viaje</h2></div>
+      <nt-campos [form]="f" [campos]="camposViaje" [soloLectura]="!editable()" />
+    </section>
+
+    <section class="nt-tarjeta">
+      <div class="nt-tarjeta-titulo"><h2>Detalle de gastos</h2></div>
+      <nt-campos [form]="f" [campos]="camposGastos" [soloLectura]="!editable()" />
+    </section>
+
+    @if (viaticos(); as lista) {
+      <section class="nt-tarjeta">
+        <div class="nt-tarjeta-titulo">
+          <h2>Viáticos</h2>
+          @if (editable()) {
+            <p-button
+              label="Agregar día"
+              icon="pi pi-plus"
+              size="small"
+              [outlined]="true"
+              (onClick)="agregarViatico()"
+            />
+          }
+        </div>
+        <div class="tabla-lineas">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th class="num">Desayuno</th>
+                <th class="num">Almuerzo</th>
+                <th class="num">Comida</th>
+                <th class="num">Total</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (v of lista.controls; track v; let i = $index) {
+                <tr [formGroup]="v">
+                  <td>
+                    <nt-fecha
+                      formControlName="fecha"
+                      ariaLabel="Fecha"
+                      claseInput="w-fecha"
+                      [fluid]="false"
+                      [botonHoy]="false"
+                    />
+                  </td>
+                  <td>
+                    <p-inputnumber
+                      formControlName="desayuno"
+                      mode="currency"
+                      currency="CLP"
+                      locale="es-CL"
+                      [maxFractionDigits]="0"
+                      inputStyleClass="w-pesos"
+                      ariaLabel="Desayuno"
+                    />
+                  </td>
+                  <td>
+                    <p-inputnumber
+                      formControlName="almuerzo"
+                      mode="currency"
+                      currency="CLP"
+                      locale="es-CL"
+                      [maxFractionDigits]="0"
+                      inputStyleClass="w-pesos"
+                      ariaLabel="Almuerzo"
+                    />
+                  </td>
+                  <td>
+                    <p-inputnumber
+                      formControlName="comida"
+                      mode="currency"
+                      currency="CLP"
+                      locale="es-CL"
+                      [maxFractionDigits]="0"
+                      inputStyleClass="w-pesos"
+                      ariaLabel="Comida"
+                    />
+                  </td>
+                  <td class="num">
+                    <strong>{{ totalDia(i) | pesos }}</strong>
+                  </td>
+                  <td>
+                    @if (editable()) {
+                      <p-button
+                        icon="pi pi-trash"
+                        severity="danger"
+                        [text]="true"
+                        [rounded]="true"
+                        size="small"
+                        (onClick)="lista.removeAt(i)"
+                        pTooltip="Quitar"
+                        ariaLabel="Quitar viático"
+                      />
+                    }
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="6" class="nt-tenue vacio">Sin viáticos registrados.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <div class="nt-totales">
+          <div class="total">
+            <span>Total viáticos</span><strong>{{ totales().totalViaticos | pesos }}</strong>
+          </div>
+        </div>
+      </section>
+    }
+
+    @if (gastos(); as lista) {
+      <section class="nt-tarjeta">
+        <div class="nt-tarjeta-titulo">
+          <h2>Otros gastos</h2>
+          @if (editable()) {
+            <p-button
+              label="Agregar gasto"
+              icon="pi pi-plus"
+              size="small"
+              [outlined]="true"
+              (onClick)="agregarGasto()"
+            />
+          }
+        </div>
+        <div class="tabla-lineas">
+          <table>
+            <thead>
+              <tr>
+                <th>Tipo documento</th>
+                <th>N° documento</th>
+                <th>RUT proveedor</th>
+                <th>Fecha</th>
+                <th class="num">Monto</th>
+                <th>Ítem de gasto</th>
+                <th>Observaciones</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (g of lista.controls; track g; let i = $index) {
+                <tr [formGroup]="g">
+                  <td>
+                    <p-select
+                      formControlName="tipoDocumentoId"
+                      [options]="opciones('TIPO_DOCUMENTO')"
+                      optionLabel="label"
+                      optionValue="value"
+                      appendTo="body"
+                      [showClear]="true"
+                      placeholder="—"
+                      class="w-sel"
+                    />
+                  </td>
+                  <td>
+                    <input
+                      pInputText
+                      formControlName="numeroDocumento"
+                      class="w-corto"
+                      aria-label="N° documento"
+                    />
+                  </td>
+                  <td>
+                    <input
+                      pInputText
+                      formControlName="rutProveedor"
+                      class="w-corto"
+                      ntRut
+                      placeholder="12.345.678-9"
+                      aria-label="RUT proveedor"
+                    />
+                    @if (g.controls.rutProveedor.invalid && g.controls.rutProveedor.touched) {
+                      <small class="nt-error" style="display: block">RUT no válido</small>
+                    }
+                  </td>
+                  <td>
+                    <nt-fecha
+                      formControlName="fecha"
+                      ariaLabel="Fecha"
+                      claseInput="w-fecha"
+                      [fluid]="false"
+                      [botonHoy]="false"
+                    />
+                  </td>
+                  <td>
+                    <p-inputnumber
+                      formControlName="monto"
+                      mode="currency"
+                      currency="CLP"
+                      locale="es-CL"
+                      [maxFractionDigits]="0"
+                      inputStyleClass="w-pesos"
+                      ariaLabel="Monto"
+                    />
+                  </td>
+                  <td>
+                    <p-select
+                      formControlName="itemGastoId"
+                      [options]="opciones('ITEM_GASTO')"
+                      optionLabel="label"
+                      optionValue="value"
+                      appendTo="body"
+                      [showClear]="true"
+                      placeholder="—"
+                      class="w-sel"
+                    />
+                  </td>
+                  <td>
+                    <input
+                      pInputText
+                      formControlName="observaciones"
+                      class="w-obs"
+                      aria-label="Observaciones"
+                    />
+                  </td>
+                  <td>
+                    @if (editable()) {
+                      <p-button
+                        icon="pi pi-trash"
+                        severity="danger"
+                        [text]="true"
+                        [rounded]="true"
+                        size="small"
+                        (onClick)="lista.removeAt(i)"
+                        pTooltip="Quitar"
+                        ariaLabel="Quitar gasto"
+                      />
+                    }
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="8" class="nt-tenue vacio">Sin otros gastos registrados.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <div class="nt-totales">
+          <div class="total">
+            <span>Total otros gastos</span><strong>{{ totales().totalOtrosGastos | pesos }}</strong>
+          </div>
+        </div>
+      </section>
+    }
+
+    <section class="nt-tarjeta">
+      <div class="nt-totales" style="margin-top: 0; border-top: none; padding-top: 0">
+        <div class="total">
+          <span>Kilómetros</span><strong>{{ totales().kmRecorridos | numero }}</strong>
+        </div>
+        <div class="total">
+          <span>Peajes, carga y descarga</span
+          ><strong>{{
+            totales().totalGeneral - totales().totalViaticos - totales().totalOtrosGastos | pesos
+          }}</strong>
+        </div>
+        <div class="total">
+          <span>Viáticos</span><strong>{{ totales().totalViaticos | pesos }}</strong>
+        </div>
+        <div class="total">
+          <span>Otros gastos</span><strong>{{ totales().totalOtrosGastos | pesos }}</strong>
+        </div>
+        <div class="total principal">
+          <span>Total rendición</span><strong>{{ totales().totalGeneral | pesos }}</strong>
+        </div>
+      </div>
+    </section>
+  }
+}
+
+<style>
+  .aviso {
+    display: block;
+    margin-bottom: 1rem;
+  }
+  .tabla-lineas {
+    overflow-x: auto;
+  }
+  .tabla-lineas table {
+    border-collapse: collapse;
+    min-width: 100%;
+  }
+  .tabla-lineas th {
+    text-align: left;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--p-text-muted-color);
+    font-weight: 600;
+    padding: 0 0.35rem 0.5rem;
+    white-space: nowrap;
+  }
+  .tabla-lineas td {
+    padding: 0.25rem 0.35rem;
+    vertical-align: middle;
+  }
+  .tabla-lineas .num {
+    text-align: right;
+    white-space: nowrap;
+  }
+  .tabla-lineas .vacio {
+    padding: 1.25rem;
+    text-align: center;
+  }
+  .w-sel {
+    width: 10rem;
+  }
+  .w-corto {
+    width: 8.5rem;
+  }
+  .w-obs {
+    width: 14rem;
+  }
+  :host ::ng-deep .w-fecha {
+    width: 9rem;
+  }
+  :host ::ng-deep .w-pesos {
+    width: 8rem;
+    text-align: right;
+  }
+</style>

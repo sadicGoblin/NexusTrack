@@ -1,0 +1,146 @@
+<ng-template #navegacion let-compacto="compacto">
+  <a class="marca" routerLink="/inicio" (click)="menuVisible.set(false)">
+    <img src="favicon.svg" alt="" width="32" height="32" />
+    <div class="marca-texto">
+      <div class="marca-nombre">NexusTrack</div>
+      <div class="marca-sub">Gestión de fletes</div>
+    </div>
+  </a>
+  <nav aria-label="Menú principal">
+    @for (grupo of menu(); track grupo.titulo) {
+      @if (grupo.titulo) {
+        <div class="grupo">
+          <span>{{ grupo.titulo }}</span>
+        </div>
+      }
+      @for (item of grupo.items; track item.ruta) {
+        <a
+          class="enlace"
+          [routerLink]="item.ruta"
+          routerLinkActive="activo"
+          (click)="menuVisible.set(false)"
+          [pTooltip]="item.etiqueta"
+          tooltipPosition="right"
+          [tooltipDisabled]="!compacto"
+        >
+          <i [class]="item.icono"></i><span>{{ item.etiqueta }}</span>
+        </a>
+      }
+    }
+  </nav>
+</ng-template>
+
+<div class="shell">
+  <aside class="lateral" [class.compacto]="menuCompacto()">
+    <ng-container
+      [ngTemplateOutlet]="navegacion"
+      [ngTemplateOutletContext]="{ compacto: menuCompacto() }"
+    />
+  </aside>
+
+  <p-drawer [(visible)]="menuVisible" styleClass="nt-drawer" [showCloseIcon]="true">
+    <ng-container [ngTemplateOutlet]="navegacion" [ngTemplateOutletContext]="{ compacto: false }" />
+  </p-drawer>
+
+  <div class="principal">
+    <header class="superior">
+      <p-button
+        icon="pi pi-bars"
+        [text]="true"
+        severity="secondary"
+        (onClick)="alternarMenu()"
+        [ariaLabel]="etiquetaMenu()"
+      />
+      <div class="ruta">
+        @if (seccion().grupo) {
+          <span class="ruta-grupo">{{ seccion().grupo }}</span>
+          <i class="pi pi-angle-right"></i>
+        }
+        <span class="ruta-item">{{ seccion().item }}</span>
+      </div>
+      <div class="acciones">
+        <p-button
+          [icon]="oscuro() ? 'pi pi-sun' : 'pi pi-moon'"
+          [text]="true"
+          [rounded]="true"
+          severity="secondary"
+          (onClick)="alternarTema()"
+          [ariaLabel]="oscuro() ? 'Usar tema claro' : 'Usar tema oscuro'"
+        />
+        <button
+          type="button"
+          class="usuario"
+          (click)="menuCuenta.toggle($event)"
+          aria-haspopup="true"
+        >
+          <p-avatar [label]="iniciales()" shape="circle" class="avatar" />
+          <span class="usuario-texto">
+            <span class="usuario-nombre">{{ usuario()?.nombre }}</span>
+            <span class="usuario-rol">{{ rol() }}</span>
+          </span>
+          <i class="pi pi-angle-down"></i>
+        </button>
+        <p-menu #menuCuenta [model]="menuUsuario" [popup]="true" appendTo="body" />
+      </div>
+    </header>
+    <main class="contenido">
+      <router-outlet />
+    </main>
+  </div>
+</div>
+
+<p-dialog
+  header="Cambiar contraseña"
+  [(visible)]="dialogoPassword"
+  [modal]="true"
+  [style]="{ width: '26rem' }"
+  [draggable]="false"
+>
+  <form class="formulario-simple" (ngSubmit)="cambiarPassword()">
+    <label for="pw-actual">Contraseña actual</label>
+    <p-password
+      inputId="pw-actual"
+      name="actual"
+      [(ngModel)]="passwordActual"
+      [feedback]="false"
+      [toggleMask]="true"
+      [fluid]="true"
+      autocomplete="current-password"
+    />
+    <label for="pw-nueva">Nueva contraseña</label>
+    <p-password
+      inputId="pw-nueva"
+      name="nueva"
+      [(ngModel)]="passwordNueva"
+      [toggleMask]="true"
+      [fluid]="true"
+      autocomplete="new-password"
+    />
+    <small class="ayuda">Al menos 8 caracteres, con letras y números.</small>
+    <label for="pw-confirmar">Confirmar nueva contraseña</label>
+    <p-password
+      inputId="pw-confirmar"
+      name="confirmar"
+      [(ngModel)]="passwordConfirmacion"
+      [feedback]="false"
+      [toggleMask]="true"
+      [fluid]="true"
+      autocomplete="new-password"
+    />
+    <div class="pie-dialogo">
+      <p-button
+        label="Cancelar"
+        severity="secondary"
+        [text]="true"
+        (onClick)="dialogoPassword.set(false)"
+      />
+      <p-button
+        label="Guardar"
+        type="submit"
+        icon="pi pi-check"
+        [loading]="guardandoPassword()"
+        [disabled]="!passwordActual || !passwordNueva"
+      />
+    </div>
+  </form>
+</p-dialog>

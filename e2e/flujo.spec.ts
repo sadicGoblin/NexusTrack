@@ -1,0 +1,146 @@
+import { expect, test } from '@playwright/test';
+import { elegir, escribirNumero, ingresar } from './ayudas';
+
+test.describe.configure({ mode: 'serial' });
+
+test('flujo completo de un flete: asignación → retiro → carga → vale → rendición', async ({ page }) => {
+  await ingresar(page);
+  await expect(page.getByRole('heading', { name: /Buen(os|as) (días|tardes|noches)/ })).toBeVisible();
+
+  // 1. Asignación: el conductor Fernando toma el camión DRXR59 con el chasis JH7077.
+  await page.goto('/mantenedores/asignaciones');
+  await page.getByRole('row', { name: /DRXR59/ }).click();
+  await elegir(page, 'a-conductor', 'FERNANDO');
+  await elegir(page, 'a-chasis', 'JH7077');
+  await page.getByRole('button', { name: 'Guardar asignación' }).click();
+  await expect(page.getByRole('row', { name: /DRXR59.*FERNANDO.*JH7077/ })).toBeVisible();
+
+  // 2. Orden de retiro: al elegir el conductor se completan empresa, camión y remolque.
+  await page.goto('/operacion/ordenes-retiro/nuevo');
+  await elegir(page, 'c-trazabilidadId', 'DEPÓSITO-PLANTA-PUERTO');
+  await elegir(page, 'c-clienteId', 'COEXCA');
+  await elegir(page, 'c-origenId', 'TALCA');
+  await elegir(page, 'c-destinoId', 'VALPARAISO');
+  await elegir(page, 'c-conductorId', 'FERNANDO');
+  await expect(page.locator('#c-camionId')).toContainText('DRXR59');
+  await expect(page.locator('#c-remolqueId')).toContainText('JH7077');
+  await expect(page.locator('#c-empresaId')).toContainText('TRANSPORTES B&B LIMITADA');
+  await expect(page.locator('#c-tipoRemolque')).toHaveValue('CHASIS C/MOTOR');
+  await elegir(page, 'c-packingCargaId', 'MAULE');
+  await page.getByRole('button', { name: 'Emitir' }).click();
+  await expect(page.getByRole('heading', { name: /Orden de retiro\s+N° 000001/ })).toBeVisible();
+  const idRetiro = page.url().split('/').pop();
+
+  // 3. Orden de carga: el tramo propone el valor de la tarifa y se asigna la hoja de ruta.
+  await page.getByRole('button', { name: 'Crear orden de carga' }).click();
+  await expect(page).toHaveURL(/ordenes-carga\/nuevo\?retiro=/);
+  // Las tarifas de la planilla vencieron en 2022: se listan igual, con un aviso al elegirlas.
+  await elegir(page, 'c-tramoId', 'TALCA - VALPARAISO - CONTENEDOR');
+  await expect(page.getByText('La tarifa de este tramo venció el 31/12/2022')).toBeVisible();
+  const guia = page.locator('.tabla-lineas tbody tr').first();
+  await guia.getByLabel('N° guía').fill('7349');
+  await guia.getByLabel('N° contenedor').fill('BUN38483483');
+  await expect(guia).toContainText('$565.000');
+  await page.getByRole('button', { name: 'Emitir' }).click();
+  await expect(page.getByRole('heading', { name: /Orden de carga\s+N° 000001/ })).toBeVisible();
+  await expect(page.getByText('Hoja de ruta N° 000001', { exact: true })).toBeVisible();
+
+  // 4. Vale de dinero (anticipo) para la misma orden de retiro.
+  await page.goto(`/operacion/vales-dinero/nuevo?retiro=${idRetiro}`);
+  await elegir(page, 'c-sitioEntregaId', 'CURICO');
+  await elegir(page, 'c-formaPagoId', 'EFECTIVO');
+  await escribirNumero(page.locator('#c-monto'), '150000');
+  await page.getByRole('button', { name: 'Emitir' }).click();
+  await expect(page.getByRole('heading', { name: /Vale de dinero\s+N° 000001/ })).toBeVisible();
+
+  // 5. Rendición: se elige la orden de carga por rendir y los totales se calculan en vivo.
+  await page.goto('/operacion/rendiciones/nuevo');
+  await page
+    .getByRole('row', { name: /000001/ })
+    .first()
+    .click();
+  await escribirNumero(page.locator('#c-odometroInicial'), '120000');
+  await escribirNumero(page.locator('#c-odometroFinal'), '120374');
+  await expect(page.locator('#c-kmRecorridos')).toHaveValue('374 km');
+  await escribirNumero(page.locator('#c-peajes'), '12000');
+  await page.getByRole('button', { name: 'Agregar día' }).click();
+  await escribirNumero(page.getByLabel('Almuerzo'), '6000');
+  await expect(page.locator('.total.principal').last()).toContainText('$18.000');
+  await page.getByRole('button', { name: 'Emitir' }).click();
+  await expect(page.getByRole('heading', { name: /Rendición de fletes\s+N° 000001/ })).toBeVisible();
+
+  // 6. El documento se descarga en PDF.
+  const descarga = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'PDF' }).click();
+  expect((await descarga).suggestedFilename()).toBe('rendicion-000001.pdf');
+
+  // 7. La orden de retiro queda cerrada y lista sus documentos.
+  await page.goto(`/operacion/ordenes-retiro/${idRetiro}`);
+  await expect(page.getByText('Flete cerrado')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'N° 000001' }).first()).toBeVisible();
+});
+
+test('la grilla filtra como planilla y exporta lo filtrado a Excel', async ({ page }) => {
+  await ingresar(page);
+  await page.goto('/mantenedores/moviles');
+  await expect(page.getByText('5 registros')).toBeVisible();
+  await page.getByPlaceholder('Buscar en todas las columnas').fill('chasis');
+  await expect(page.getByText('2 de 5 registros')).toBeVisible();
+  const descarga = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Excel' }).click();
+  expect((await descarga).suggestedFilename()).toBe('moviles.xlsx');
+});
+
+test('el orden y los filtros por columna se activan con un interruptor que se recuerda', async ({ page }) => {
+  await ingresar(page);
+  await page.goto('/mantenedores/moviles');
+  const interruptor = page.getByRole('switch', { name: 'Ordenar y filtrar' });
+  const botonesFiltro = page.locator('.p-datatable-column-filter-button');
+  const patentes = page.locator('.p-datatable-tbody tr td:first-child');
+  const patente = page.getByRole('columnheader', { name: /Patente/ });
+  await expect(page.getByText('5 registros')).toBeVisible();
+  const original = await patentes.allTextContents();
+
+  // Apagado por defecto: encabezados limpios y sin ordenar al hacer clic.
+  await expect(interruptor).not.toBeChecked();
+  await expect(botonesFiltro).toHaveCount(0);
+  await patente.click();
+  expect(await patentes.allTextContents()).toEqual(original);
+
+  await interruptor.click();
+  await expect(botonesFiltro.first()).toBeVisible();
+  await patente.click();
+  await patente.click();
+  await expect(patentes.first()).toHaveText([...original].sort().reverse()[0]);
+
+  // Al apagarlo se quitan el orden y los filtros: vuelve el orden original.
+  await interruptor.click();
+  await expect(botonesFiltro).toHaveCount(0);
+  expect(await patentes.allTextContents()).toEqual(original);
+
+  await interruptor.click();
+  await page.reload();
+  await expect(interruptor).toBeChecked();
+});
+
+test('un usuario de solo lectura no ve acciones de edición ni administración', async ({ page }) => {
+  await ingresar(page);
+  await page.goto('/administracion/usuarios');
+  await page.getByRole('button', { name: 'Nuevo usuario' }).click();
+  await page.locator('#c-nombre').fill('Consulta Pruebas');
+  await page.locator('#c-email').fill('consulta@pruebas.cl');
+  await elegir(page, 'c-rol', 'Solo lectura');
+  await page.locator('#c-password').fill('Consulta123');
+  await page.getByRole('button', { name: 'Guardar' }).click();
+  await expect(page.getByRole('row', { name: /consulta@pruebas.cl/ })).toBeVisible();
+
+  await page.getByRole('button', { name: /Administrador/ }).click();
+  await page.getByRole('menuitem', { name: 'Cerrar sesión' }).click();
+  await expect(page).toHaveURL(/\/login/);
+  await ingresar(page, 'consulta@pruebas.cl', 'Consulta123');
+  await expect(page.getByRole('link', { name: 'Usuarios' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Nueva orden de retiro' })).toHaveCount(0);
+  await page.goto('/operacion/ordenes-retiro');
+  await expect(page.getByRole('heading', { name: 'Órdenes de retiro' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Nueva orden de retiro' })).toHaveCount(0);
+});

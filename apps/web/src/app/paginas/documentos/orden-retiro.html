@@ -1,0 +1,250 @@
+<nt-barra-documento
+  titulo="Orden de retiro"
+  [subtitulo]="subtitulo()"
+  [numero]="dto()?.numero ?? null"
+  [estado]="dto()?.estado ?? null"
+  [recurso]="'ordenes-retiro/' + dto()?.id"
+  volver="/operacion/ordenes-retiro"
+  [editable]="editable()"
+  [anulable]="dto()?.estado === 'ABIERTA'"
+  [guardando]="guardando()"
+  (guardar)="guardar()"
+  (anular)="anular($event)"
+/>
+
+@if (dto()?.estado === 'ANULADA') {
+  <p-message severity="error" class="aviso-anulado"
+    >Orden anulada. Motivo: {{ dto()?.motivoAnulacion }}</p-message
+  >
+} @else if (dto()?.estado === 'CERRADA') {
+  <p-message severity="success" class="aviso-anulado"
+    >Flete cerrado: la orden de carga ya fue rendida. La orden no admite cambios.</p-message
+  >
+}
+
+@if (form(); as f) {
+  @for (s of secciones; track s.titulo) {
+    <section class="nt-tarjeta">
+      <div class="nt-tarjeta-titulo">
+        <h2>{{ s.titulo }}</h2>
+        @if (s.titulo === 'Transporte' && sugerencia()) {
+          <small><i class="pi pi-sparkles"></i> {{ sugerencia() }}</small>
+        }
+      </div>
+      <nt-campos [form]="f" [campos]="s.campos" [soloLectura]="!editable()" />
+    </section>
+  }
+}
+
+@if (dto(); as d) {
+  <section class="nt-tarjeta">
+    <div class="nt-tarjeta-titulo">
+      <h2>Documentos del flete</h2>
+    </div>
+    <div class="relacionados">
+      <article class="panel">
+        <header>
+          <i class="pi pi-box" aria-hidden="true"></i>
+          <h3>Orden de carga</h3>
+          @if (!d.ordenCargaId && d.estado === 'ABIERTA' && puedeOperacion()) {
+            <p-button
+              label="Crear"
+              icon="pi pi-plus"
+              size="small"
+              [outlined]="true"
+              routerLink="/operacion/ordenes-carga/nuevo"
+              [queryParams]="{ retiro: d.id }"
+              ariaLabel="Crear orden de carga"
+            />
+          }
+        </header>
+        @if (d.ordenCargaId) {
+          <a class="item" [routerLink]="['/operacion/ordenes-carga', d.ordenCargaId]">
+            <span class="numero">N° {{ d.ordenCargaNumero | correlativo }}</span>
+            <span class="nt-tenue">Ver orden de carga</span>
+            <i class="pi pi-angle-right ir" aria-hidden="true"></i>
+          </a>
+        } @else {
+          <p class="vacio">Aún no tiene orden de carga.</p>
+        }
+      </article>
+
+      <article class="panel">
+        <header>
+          <i class="pi pi-wallet" aria-hidden="true"></i>
+          <h3>Vales de dinero</h3>
+          @if (valesDinero().length) {
+            <span class="conteo">{{ valesDinero().length }}</span>
+          }
+          @if (activa() && puedeFinanzas()) {
+            <p-button
+              label="Nuevo"
+              icon="pi pi-plus"
+              size="small"
+              [outlined]="true"
+              routerLink="/operacion/vales-dinero/nuevo"
+              [queryParams]="{ retiro: d.id }"
+              ariaLabel="Nuevo vale de dinero"
+            />
+          }
+        </header>
+        @for (v of valesDinero(); track v.id) {
+          <a class="item" [routerLink]="['/operacion/vales-dinero', v.id]">
+            <span class="numero">N° {{ v.numero | correlativo }}</span>
+            <span class="nt-tenue">{{ v.fechaEntrega | fecha }}</span>
+            <strong class="monto">{{ v.monto | pesos }}</strong>
+            <nt-estado [estado]="v.estado" />
+          </a>
+        } @empty {
+          <p class="vacio">Aún no tiene vales de dinero.</p>
+        }
+        @if (valesDinero().length) {
+          <footer>
+            <span>Total sin anulados</span>
+            <strong>{{ totalValesDinero() | pesos }}</strong>
+          </footer>
+        }
+      </article>
+
+      <article class="panel">
+        <header>
+          <i class="pi pi-gauge" aria-hidden="true"></i>
+          <h3>Vales de combustible</h3>
+          @if (valesCombustible().length) {
+            <span class="conteo">{{ valesCombustible().length }}</span>
+          }
+          @if (activa() && puedeFinanzas()) {
+            <p-button
+              label="Nuevo"
+              icon="pi pi-plus"
+              size="small"
+              [outlined]="true"
+              routerLink="/operacion/vales-combustible/nuevo"
+              [queryParams]="{ retiro: d.id }"
+              ariaLabel="Nuevo vale de combustible"
+            />
+          }
+        </header>
+        @for (v of valesCombustible(); track v.id) {
+          <a class="item" [routerLink]="['/operacion/vales-combustible', v.id]">
+            <span class="numero">N° {{ v.numero | correlativo }}</span>
+            <span class="nt-tenue">{{ v.totalLitros | numero: 2 }} L</span>
+            <strong class="monto">{{ v.total | pesos }}</strong>
+            <nt-estado [estado]="v.estado" />
+          </a>
+        } @empty {
+          <p class="vacio">Aún no tiene vales de combustible.</p>
+        }
+        @if (valesCombustible().length) {
+          <footer>
+            <span>Total sin anulados</span>
+            <strong>{{ totalValesCombustible() | pesos }}</strong>
+          </footer>
+        }
+      </article>
+    </div>
+  </section>
+}
+
+<style>
+  .aviso-anulado {
+    display: block;
+    margin-bottom: 1rem;
+  }
+  .relacionados {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1rem;
+    align-items: start;
+  }
+  .panel {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--p-content-border-color);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .panel header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 3rem;
+    padding: 0.5rem 0.75rem 0.5rem 1rem;
+    background: var(--nt-tabla-encabezado);
+    border-bottom: 1px solid var(--p-content-border-color);
+  }
+  .panel header i {
+    color: var(--p-text-muted-color);
+  }
+  .panel h3 {
+    margin: 0;
+    font-size: 0.88rem;
+    font-weight: 600;
+  }
+  .panel header p-button {
+    margin-left: auto;
+  }
+  .conteo {
+    padding: 0 0.45rem;
+    border-radius: 999px;
+    background: var(--p-highlight-background);
+    color: var(--p-highlight-color);
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.4rem;
+  }
+  .item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 1rem;
+    color: inherit;
+    text-decoration: none;
+    font-size: 0.88rem;
+    transition: background 0.15s;
+  }
+  .item + .item {
+    border-top: 1px solid var(--p-content-border-color);
+  }
+  .item:hover,
+  .item:focus-visible {
+    background: var(--p-content-hover-background);
+  }
+  .numero {
+    font-weight: 600;
+    color: var(--p-primary-color);
+    font-variant-numeric: tabular-nums;
+  }
+  .monto {
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+  }
+  .ir {
+    margin-left: auto;
+    color: var(--p-text-muted-color);
+  }
+  .vacio {
+    margin: 0;
+    padding: 1.25rem 1rem;
+    text-align: center;
+    font-size: 0.88rem;
+    color: var(--p-text-muted-color);
+  }
+  .panel footer {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.6rem 1rem;
+    border-top: 1px solid var(--p-content-border-color);
+    font-size: 0.85rem;
+    color: var(--p-text-muted-color);
+  }
+  .panel footer strong {
+    color: var(--p-text-color);
+    font-variant-numeric: tabular-nums;
+  }
+  @media (max-width: 1100px) {
+    .relacionados {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+</style>

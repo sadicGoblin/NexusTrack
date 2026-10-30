@@ -1,0 +1,230 @@
+<div class="nt-encabezado">
+  <div>
+    <h1>Asignaciones</h1>
+    <p>
+      Configuración vigente de cada camión: conductor y remolques. Se usa para completar
+      automáticamente las órdenes de retiro.
+    </p>
+  </div>
+</div>
+
+<nt-tabla
+  [filas]="filas()"
+  [columnas]="columnas"
+  titulo="Asignaciones vigentes"
+  [cargando]="cargando()"
+  claveEstado="asignaciones"
+  [clicable]="puedeEditar()"
+  (seleccionar)="editar($event)"
+>
+  <ng-template #acciones let-fila>
+    <div class="nt-fila" style="justify-content: flex-end; flex-wrap: nowrap">
+      @if (puedeEditar()) {
+        <p-button
+          icon="pi pi-pencil"
+          [text]="true"
+          [rounded]="true"
+          size="small"
+          pTooltip="Cambiar asignación"
+          (onClick)="editar(fila)"
+          ariaLabel="Cambiar asignación"
+        />
+        @if (fila.asignacion) {
+          <p-button
+            icon="pi pi-times"
+            [text]="true"
+            [rounded]="true"
+            size="small"
+            severity="danger"
+            pTooltip="Liberar camión"
+            (onClick)="liberar(fila)"
+            ariaLabel="Liberar camión"
+          />
+        }
+      }
+      <p-button
+        icon="pi pi-history"
+        [text]="true"
+        [rounded]="true"
+        size="small"
+        severity="secondary"
+        pTooltip="Historial"
+        (onClick)="verHistorial(fila)"
+        ariaLabel="Historial"
+      />
+    </div>
+  </ng-template>
+</nt-tabla>
+
+<p-dialog
+  [header]="'Asignación del camión ' + (seleccionado()?.camion ?? '')"
+  [(visible)]="dialogo"
+  [modal]="true"
+  [draggable]="false"
+  [style]="{ width: '40rem', maxWidth: '96vw' }"
+>
+  <p class="nt-tenue" style="margin-top: 0">
+    {{ seleccionado()?.camionTipo }} · {{ seleccionado()?.empresa }}. Al guardar, la asignación
+    anterior se cierra con la fecha indicada y queda en el historial.
+  </p>
+  <div class="nt-grilla" style="grid-template-columns: repeat(2, minmax(0, 1fr))">
+    <div class="nt-campo nt-ancho-2">
+      <label for="a-conductor">Conductor</label>
+      <p-select
+        inputId="a-conductor"
+        [options]="opcionesConductor()"
+        [(ngModel)]="conductorId"
+        optionLabel="label"
+        optionValue="value"
+        [filter]="true"
+        filterBy="label,detalle"
+        [showClear]="true"
+        placeholder="Sin conductor"
+        appendTo="body"
+        [fluid]="true"
+      >
+        <ng-template #item let-o>
+          <div class="nt-fila" style="width: 100%">
+            <span>{{ o.label }}</span
+            ><span class="nt-opcion-detalle">{{ o.detalle }}</span>
+          </div>
+        </ng-template>
+      </p-select>
+      <div class="nt-fila">
+        <p-checkbox
+          inputId="a-todos"
+          [binary]="true"
+          [ngModel]="todosLosConductores()"
+          (ngModelChange)="todosLosConductores.set($event)"
+        />
+        <label for="a-todos" class="nt-ayuda">Mostrar conductores de otras empresas</label>
+      </div>
+    </div>
+    <div class="nt-campo">
+      <label for="a-chasis">Chasis (portacontenedor)</label>
+      <p-select
+        inputId="a-chasis"
+        [options]="opcionesRemolque('chasisId')"
+        [(ngModel)]="chasisId"
+        optionLabel="label"
+        optionValue="value"
+        [filter]="true"
+        filterBy="label,detalle"
+        [showClear]="true"
+        placeholder="Sin chasis"
+        appendTo="body"
+        [fluid]="true"
+      >
+        <ng-template #item let-o>
+          <div class="nt-fila" style="width: 100%">
+            <span>{{ o.label }}</span
+            ><span class="nt-opcion-detalle">{{ o.detalle }}</span>
+          </div>
+        </ng-template>
+      </p-select>
+    </div>
+    <div class="nt-campo">
+      <label for="a-thermo">Thermo</label>
+      <p-select
+        inputId="a-thermo"
+        [options]="opcionesRemolque('thermoId')"
+        [(ngModel)]="thermoId"
+        optionLabel="label"
+        optionValue="value"
+        [filter]="true"
+        filterBy="label,detalle"
+        [showClear]="true"
+        placeholder="Sin thermo"
+        appendTo="body"
+        [fluid]="true"
+      >
+        <ng-template #item let-o>
+          <div class="nt-fila" style="width: 100%">
+            <span>{{ o.label }}</span
+            ><span class="nt-opcion-detalle">{{ o.detalle }}</span>
+          </div>
+        </ng-template>
+      </p-select>
+    </div>
+    <div class="nt-campo">
+      <label for="a-plataforma">Plataforma</label>
+      <p-select
+        inputId="a-plataforma"
+        [options]="opcionesRemolque('plataformaId')"
+        [(ngModel)]="plataformaId"
+        optionLabel="label"
+        optionValue="value"
+        [filter]="true"
+        filterBy="label,detalle"
+        [showClear]="true"
+        placeholder="Sin plataforma"
+        appendTo="body"
+        [fluid]="true"
+      >
+        <ng-template #item let-o>
+          <div class="nt-fila" style="width: 100%">
+            <span>{{ o.label }}</span
+            ><span class="nt-opcion-detalle">{{ o.detalle }}</span>
+          </div>
+        </ng-template>
+      </p-select>
+    </div>
+    <div class="nt-campo">
+      <label for="a-fecha" class="requerido">Fecha de asignación</label>
+      <nt-fecha inputId="a-fecha" [(ngModel)]="fecha" />
+    </div>
+  </div>
+  <ng-template #footer>
+    <p-button label="Cancelar" severity="secondary" [text]="true" (onClick)="dialogo.set(false)" />
+    <p-button
+      label="Guardar asignación"
+      icon="pi pi-check"
+      (onClick)="guardar()"
+      [loading]="guardando()"
+      [disabled]="!fecha"
+    />
+  </ng-template>
+</p-dialog>
+
+<p-dialog
+  [header]="'Historial del camión ' + (seleccionado()?.camion ?? '')"
+  [(visible)]="dialogoHistorial"
+  [modal]="true"
+  [draggable]="false"
+  [dismissableMask]="true"
+  [style]="{ width: '56rem', maxWidth: '96vw' }"
+>
+  <p-table [value]="historial()" size="small" [scrollable]="true" scrollHeight="60vh">
+    <ng-template #header>
+      <tr>
+        <th>Desde</th>
+        <th>Hasta</th>
+        <th>Conductor</th>
+        <th>Chasis</th>
+        <th>Thermo</th>
+        <th>Plataforma</th>
+      </tr>
+    </ng-template>
+    <ng-template #body let-a>
+      <tr>
+        <td>{{ a.fechaAsignacion | fecha }}</td>
+        <td>
+          @if (a.vigente) {
+            <strong>Vigente</strong>
+          } @else {
+            {{ a.fechaTermino | fecha }}
+          }
+        </td>
+        <td>{{ a.conductor ?? '—' }}</td>
+        <td>{{ a.chasis ?? '—' }}</td>
+        <td>{{ a.thermo ?? '—' }}</td>
+        <td>{{ a.plataforma ?? '—' }}</td>
+      </tr>
+    </ng-template>
+    <ng-template #emptymessage>
+      <tr>
+        <td colspan="6" class="nt-tenue">Este camión no tiene asignaciones registradas.</td>
+      </tr>
+    </ng-template>
+  </p-table>
+</p-dialog>

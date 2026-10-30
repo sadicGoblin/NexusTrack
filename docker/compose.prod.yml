@@ -1,0 +1,83 @@
+# Producción: PostgreSQL + API + web (Caddy con HTTPS) + respaldo diario.
+#   cp .env.produccion.example .env.produccion   # completar secretos y dominio
+#   docker compose -f docker/compose.prod.yml --env-file .env.produccion up -d --build
+name: nexustrack
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nexustrack
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD}
+      POSTGRES_DB: nexustrack
+      TZ: America/Santiago
+      PGTZ: America/Santiago
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U nexustrack -d nexustrack']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://nexustrack:${POSTGRES_PASSWORD}@db:5432/nexustrack?schema=public
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Defina JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Defina JWT_REFRESH_SECRET}
+      JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-15m}
+      JWT_REFRESH_TTL_DIAS: ${JWT_REFRESH_TTL_DIAS:-7}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@nexustrack.cl}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:?Defina SEED_ADMIN_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+    restart: unless-stopped
+    environment:
+      DOMINIO: ${DOMINIO:-:80}
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+
+  respaldo:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      TZ: America/Santiago
+    volumes:
+      - respaldos:/respaldos
+    entrypoint:
+      - sh
+      - -c
+      - |
+        while true; do
+          archivo=/respaldos/nexustrack-$$(date +%Y-%m-%d_%H%M).sql.gz
+          pg_dump -h db -U nexustrack -d nexustrack --no-owner | gzip > $$archivo && echo "Respaldo creado: $$archivo"
+          find /respaldos -name 'nexustrack-*.sql.gz' -mtime +30 -delete
+          sleep 86400
+        done
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db-data:
+  caddy-data:
+  caddy-config:
+  respaldos:

@@ -1,0 +1,263 @@
+<p-table
+  #tabla
+  [value]="filasProcesadas()"
+  [columns]="visibles()"
+  [paginator]="filas().length > filasPorPagina()"
+  [rows]="filasPorPagina()"
+  [rowsPerPageOptions]="[25, 50, 100, 500]"
+  [showCurrentPageReport]="true"
+  currentPageReportTemplate="{first}–{last} de {totalRecords}"
+  [globalFilterFields]="camposBusqueda()"
+  [loading]="cargando()"
+  sortMode="multiple"
+  [rowHover]="true"
+  size="small"
+  [scrollable]="true"
+  dataKey="id"
+  (onFilter)="alFiltrar($event)"
+  (onSort)="ordenada.set(true)"
+  class="nt-tabla"
+  [class.con-herramientas]="herramientas()"
+>
+  <ng-template #caption>
+    <div class="barra">
+      <p-iconfield iconPosition="left" class="buscador">
+        <p-inputicon class="pi pi-search" />
+        <input
+          pInputText
+          type="search"
+          [ngModel]="busqueda()"
+          (ngModelChange)="buscar($event)"
+          placeholder="Buscar en todas las columnas"
+          aria-label="Buscar"
+        />
+      </p-iconfield>
+      <span class="conteo">
+        @if (cantidadFiltrada() !== null) {
+          <strong>{{ cantidadFiltrada() }}</strong> de {{ total() }} registros
+        } @else {
+          {{ total() }} registros
+        }
+      </span>
+      @if (cantidadFiltrada() !== null || ordenada()) {
+        <p-button
+          label="Limpiar"
+          icon="pi pi-filter-slash"
+          severity="secondary"
+          [text]="true"
+          size="small"
+          (onClick)="limpiar()"
+          pTooltip="Quitar búsqueda, filtros y orden"
+          tooltipPosition="top"
+        />
+      }
+      <span class="nt-espacio"></span>
+      <ng-content select="[barra]" />
+      <label class="interruptor">
+        <p-toggleswitch [ngModel]="herramientas()" (ngModelChange)="alternarHerramientas($event)" />
+        <span>Ordenar y filtrar</span>
+      </label>
+      <p-multiselect
+        [options]="columnas()"
+        optionLabel="titulo"
+        optionValue="campo"
+        [ngModel]="seleccionColumnas()"
+        (ngModelChange)="elegirColumnas($event)"
+        [showToggleAll]="true"
+        selectedItemsLabel="{0} columnas"
+        [maxSelectedLabels]="0"
+        placeholder="Columnas"
+        class="selector-columnas"
+        appendTo="body"
+        size="small"
+      />
+      <p-button
+        icon="pi pi-file-excel"
+        label="Excel"
+        severity="secondary"
+        [outlined]="true"
+        size="small"
+        [loading]="exportando() === 'xlsx'"
+        (onClick)="exportar('xlsx')"
+      />
+      <p-button
+        icon="pi pi-file-pdf"
+        label="PDF"
+        severity="secondary"
+        [outlined]="true"
+        size="small"
+        [loading]="exportando() === 'pdf'"
+        (onClick)="exportar('pdf')"
+      />
+    </div>
+  </ng-template>
+
+  <ng-template #header let-columnas>
+    <tr>
+      @for (c of columnas; track c.campo) {
+        <th
+          [pSortableColumn]="c.campo"
+          [pSortableColumnDisabled]="!herramientas()"
+          [style.min-width]="c.ancho"
+          [class.nt-derecha]="esNumerica(c)"
+        >
+          <div class="encabezado-columna" [class.numerica]="esNumerica(c)">
+            <span class="titulo-columna">{{ c.titulo }}</span>
+            @if (herramientas()) {
+              <p-sortIcon [field]="c.campo" />
+              @switch (filtro(c)) {
+                @case ('texto') {
+                  <p-columnfilter
+                    type="text"
+                    [field]="c.campo"
+                    display="menu"
+                    [showOperator]="false"
+                    [showAddButton]="false"
+                  />
+                }
+                @case ('numero') {
+                  <p-columnfilter
+                    type="numeric"
+                    [field]="c.campo"
+                    display="menu"
+                    [showOperator]="false"
+                    [showAddButton]="false"
+                    locale="es-CL"
+                  />
+                }
+                @case ('fecha') {
+                  <p-columnfilter
+                    type="date"
+                    [field]="campoFiltro(c)"
+                    display="menu"
+                    [showOperator]="false"
+                    [showAddButton]="false"
+                  >
+                    <ng-template #filter let-valor let-filtrar="filterCallback">
+                      <nt-fecha
+                        [ngModel]="valor"
+                        (ngModelChange)="filtrar($event)"
+                        ariaLabel="Fecha"
+                      />
+                    </ng-template>
+                  </p-columnfilter>
+                }
+                @case ('booleano') {
+                  <p-columnfilter type="boolean" [field]="c.campo" display="menu" />
+                }
+                @case ('lista') {
+                  <p-columnfilter
+                    [field]="c.campo"
+                    matchMode="in"
+                    display="menu"
+                    [showMatchModes]="false"
+                    [showOperator]="false"
+                    [showAddButton]="false"
+                  >
+                    <ng-template #filter let-valor let-filtrar="filterCallback">
+                      <p-multiselect
+                        [ngModel]="valor"
+                        [options]="opcionesLista()[c.campo] ?? []"
+                        optionLabel="label"
+                        optionValue="value"
+                        placeholder="Todos"
+                        [filter]="(opcionesLista()[c.campo]?.length ?? 0) > 8"
+                        (onChange)="filtrar($event.value)"
+                        appendTo="body"
+                        class="filtro-lista"
+                      />
+                    </ng-template>
+                  </p-columnfilter>
+                }
+              }
+            }
+          </div>
+        </th>
+      }
+      @if (acciones()) {
+        <th class="col-acciones" pFrozenColumn [frozen]="true" alignFrozen="right"></th>
+      }
+    </tr>
+  </ng-template>
+
+  <ng-template #sorticon let-orden>
+    @if (orden === 1) {
+      <i class="pi pi-arrow-up" aria-hidden="true"></i>
+    } @else if (orden === -1) {
+      <i class="pi pi-arrow-down" aria-hidden="true"></i>
+    } @else {
+      <i class="pi pi-sort-alt sin-orden" aria-hidden="true"></i>
+    }
+  </ng-template>
+
+  <ng-template #body let-fila let-columnas="columns">
+    <tr [class.clicable]="clicable()" (click)="clicable() && seleccionar.emit(fila)">
+      @for (c of columnas; track c.campo) {
+        <td [class]="claseCelda(c, valor(fila, c.campo))">
+          @let v = valor(fila, c.campo);
+          @switch (c.tipo) {
+            @case ('fecha') {
+              {{ v | fecha }}
+            }
+            @case ('pesos') {
+              {{ v | pesos }}
+            }
+            @case ('numero') {
+              {{ v | numero }}
+            }
+            @case ('decimal') {
+              {{ v | numero: 1 }}
+            }
+            @case ('porcentaje') {
+              {{ v | porcentaje }}
+            }
+            @case ('correlativo') {
+              <span class="correlativo">{{ v | correlativo }}</span>
+            }
+            @case ('booleano') {
+              @if (v) {
+                <i class="pi pi-check-circle si" aria-label="Sí"></i>
+              } @else {
+                <i class="pi pi-minus-circle no" aria-label="No"></i>
+              }
+            }
+            @case ('estado') {
+              <nt-estado [estado]="v" />
+            }
+            @default {
+              {{ v }}
+            }
+          }
+        </td>
+      }
+      @if (acciones(); as plantilla) {
+        <td
+          class="col-acciones"
+          pFrozenColumn
+          [frozen]="true"
+          alignFrozen="right"
+          (click)="$event.stopPropagation()"
+        >
+          <ng-container
+            [ngTemplateOutlet]="plantilla"
+            [ngTemplateOutletContext]="{ $implicit: fila }"
+          />
+        </td>
+      }
+    </tr>
+  </ng-template>
+
+  <ng-template #emptymessage let-columnas>
+    <tr>
+      <td [attr.colspan]="columnas.length + (acciones() ? 1 : 0)" class="vacio">
+        @if (cargando()) {
+          Cargando…
+        } @else if (total()) {
+          Ningún registro coincide con la búsqueda o los filtros.
+        } @else {
+          No hay registros.
+        }
+      </td>
+    </tr>
+  </ng-template>
+</p-table>

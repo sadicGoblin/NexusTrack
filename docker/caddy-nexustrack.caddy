@@ -1,0 +1,6 @@
+# Bloque para agregar al Caddyfile del Caddy que ya corre en el VPS.
+# Reemplace el dominio por el subdominio que apunte a la IP del VPS.
+api.nexustrack.midominio.cl {
+	encode zstd gzip
+	reverse_proxy nexustrack-api:3100
+}

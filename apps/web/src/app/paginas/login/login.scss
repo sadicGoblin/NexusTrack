@@ -1,0 +1,102 @@
+.pantalla {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+}
+
+.panel-marca {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 2.5rem 3rem;
+  color: #e2ecf6;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(56, 189, 248, 0.18), transparent 45%),
+    linear-gradient(160deg, #0b3d66 0%, #082a47 60%, #061f35 100%);
+
+  small {
+    opacity: 0.6;
+  }
+}
+
+.marca {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.mensaje {
+  max-width: 30rem;
+
+  h2 {
+    font-size: 1.9rem;
+    line-height: 1.25;
+    color: #fff;
+    margin-bottom: 1.5rem;
+  }
+
+  ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  i {
+    color: #38bdf8;
+    margin-right: 0.5rem;
+  }
+}
+
+.panel-form {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+
+.tarjeta {
+  width: 100%;
+  max-width: 24rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+
+  h1 {
+    font-size: 1.6rem;
+  }
+
+  p {
+    margin: 0 0 1rem;
+  }
+
+  label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-top: 0.6rem;
+  }
+}
+
+:host ::ng-deep {
+  .aviso {
+    margin-bottom: 0.5rem;
+  }
+
+  .boton {
+    margin-top: 1.4rem;
+  }
+}
+
+@media (max-width: 860px) {
+  .pantalla {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .panel-marca {
+    display: none;
+  }
+}

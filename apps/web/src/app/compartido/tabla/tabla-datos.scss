@@ -1,0 +1,211 @@
+:host {
+  display: block;
+}
+
+.barra {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.buscador input {
+  width: 19rem;
+  max-width: 100%;
+}
+
+.conteo {
+  font-size: 0.85rem;
+  color: var(--p-text-muted-color);
+  margin-left: 0.25rem;
+}
+
+.interruptor {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.35rem;
+  font-size: 0.85rem;
+  color: var(--p-text-muted-color);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  --p-toggleswitch-width: 2.1rem;
+  --p-toggleswitch-height: 1.2rem;
+  --p-toggleswitch-handle-size: 0.85rem;
+}
+
+.encabezado-columna {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 1.5rem;
+
+  &.numerica {
+    justify-content: flex-end;
+  }
+}
+
+tr.clicable {
+  cursor: pointer;
+}
+
+.correlativo {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.si {
+  color: var(--nt-exito);
+}
+
+.no {
+  color: var(--p-text-muted-color);
+  opacity: 0.6;
+}
+
+.col-acciones {
+  width: 1%;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.vacio {
+  text-align: center;
+  padding: 2.5rem 1rem !important;
+  color: var(--p-text-muted-color);
+}
+
+:host ::ng-deep {
+  .nt-tabla {
+    border: 1px solid var(--p-content-border-color);
+    border-radius: var(--nt-radio);
+    overflow: hidden;
+    background: var(--p-content-background);
+    box-shadow: var(--nt-tarjeta-sombra);
+  }
+
+  .p-datatable-header {
+    border-top: none;
+    padding: 0.75rem 1rem;
+  }
+
+  .p-datatable-thead > tr > th {
+    padding: 0.6rem 0.75rem;
+    background: var(--nt-tabla-encabezado);
+    border-bottom: 1px solid var(--p-content-border-color);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--p-text-muted-color);
+    font-weight: 600;
+    transition: color 0.15s;
+  }
+
+  .p-datatable-tbody > tr > td {
+    font-size: 0.88rem;
+    padding: 0.6rem 0.75rem;
+  }
+
+  /* Bordes alineados con la barra de búsqueda. */
+  .p-datatable-thead > tr > th:first-child,
+  .p-datatable-tbody > tr > td:first-child {
+    padding-left: 1rem;
+  }
+
+  .p-datatable-thead > tr > th:last-child,
+  .p-datatable-tbody > tr > td:last-child {
+    padding-right: 1rem;
+  }
+
+  /* Orden: flecha en el color principal si la columna está ordenada; si no, solo al pasar. */
+  .p-datatable-sortable-column:hover,
+  .p-datatable-column-sorted {
+    background: var(--nt-tabla-encabezado);
+    color: var(--p-text-color);
+  }
+
+  .p-datatable-column-sorted {
+    color: var(--p-primary-color);
+  }
+
+  .p-datatable-sort-icon {
+    display: inline-flex;
+    flex-shrink: 0;
+    font-size: 0.7rem;
+    color: var(--p-primary-color);
+  }
+
+  .sin-orden {
+    color: var(--p-text-muted-color);
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .p-datatable-sortable-column:hover .sin-orden,
+  .p-datatable-sortable-column:focus-visible .sin-orden {
+    opacity: 0.7;
+  }
+
+  .p-sortable-column-badge {
+    min-width: 1rem;
+    height: 1rem;
+    font-size: 0.6rem;
+  }
+
+  /* Filtro: embudo discreto al extremo de la columna; en color cuando hay un filtro activo. */
+  p-columnfilter {
+    margin-left: auto;
+  }
+
+  .numerica p-columnfilter {
+    order: -1;
+    margin-left: 0;
+    margin-right: auto;
+  }
+
+  .p-datatable-column-filter-button {
+    flex-shrink: 0;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 6px;
+    color: var(--p-text-muted-color);
+    opacity: 0.45;
+    transition:
+      opacity 0.15s,
+      background 0.15s;
+
+    svg {
+      width: 0.75rem;
+      height: 0.75rem;
+    }
+  }
+
+  th:hover .p-datatable-column-filter-button,
+  .p-datatable-column-filter-button:focus-visible,
+  p-button[aria-expanded='true'] .p-datatable-column-filter-button {
+    opacity: 1;
+  }
+
+  /* PrimeNG marca el filtro activo solo cambiando el embudo vacío por uno relleno. */
+  .p-datatable-column-filter-button:has([data-p-icon='filter-fill']) {
+    opacity: 1;
+    color: var(--p-primary-color);
+    background: var(--p-highlight-background);
+  }
+
+  .selector-columnas {
+    min-width: 9rem;
+  }
+
+  .p-paginator {
+    border-top: 1px solid var(--p-content-border-color);
+  }
+}
+
+@media (max-width: 640px) {
+  .buscador,
+  .buscador input {
+    width: 100%;
+  }
+}

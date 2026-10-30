@@ -1,0 +1,600 @@
+// Modelo de datos de NexusTrack.
+// Referencia funcional: docs/NexusTrack.md. Decisiones de diseño: docs/plan.md, sección 5.
+//
+// Convenciones:
+// - Montos en pesos chilenos como enteros (Int), sin decimales.
+// - Fechas de negocio sin hora como @db.Date; horas como texto "HH:mm".
+// - Toda tabla lleva creadoPorId / actualizadoPorId (id de Usuario, sin FK para no
+//   cargar el modelo Usuario con decenas de relaciones inversas). El detalle de cada
+//   cambio queda en la tabla Auditoria, que sí referencia al usuario.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../apps/api/src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ───────────────────────────── Enumeraciones ─────────────────────────────
+
+enum Rol {
+  ADMIN
+  OPERACIONES
+  FINANZAS
+  LECTURA
+}
+
+enum TipoCatalogo {
+  CIUDAD
+  PUERTO_EMBARQUE
+  DEPOSITO
+  TRAZABILIDAD
+  TIPO_MOVIL
+  CATEGORIA_EMPRESA
+  UNIDAD_RUTA
+  ESPECIE
+  UM_ESPECIE
+  UM_TARIFA
+  SITIO_ENTREGA
+  FORMA_PAGO
+  TIPO_DOCUMENTO
+  ITEM_GASTO
+}
+
+enum TipoConductor {
+  TRABAJADOR
+  TERCERO
+}
+
+enum EstadoOrdenRetiro {
+  ABIERTA
+  CON_CARGA
+  CERRADA
+  ANULADA
+}
+
+enum EstadoOrdenCarga {
+  ABIERTA
+  RENDIDA
+  ANULADA
+}
+
+enum EstadoDocumento {
+  EMITIDO
+  ANULADO
+}
+
+enum TipoSecuencia {
+  ORDEN_RETIRO
+  VALE_DINERO
+  ORDEN_CARGA
+  HOJA_RUTA
+  VALE_COMBUSTIBLE
+  RENDICION
+  PACKING
+  RUTA_TARIFA
+}
+
+// ───────────────────────────── Acceso y sistema ─────────────────────────────
+
+model Usuario {
+  id               Int         @id @default(autoincrement())
+  email            String      @unique
+  nombre           String
+  passwordHash     String
+  rol              Rol
+  activo           Boolean     @default(true)
+  /// Se incrementa al cambiar la contraseña o desactivar el usuario: invalida todas sus sesiones.
+  versionToken     Int         @default(0)
+  ultimoAcceso     DateTime?
+  creadoEn         DateTime    @default(now())
+  actualizadoEn    DateTime    @updatedAt
+  auditorias       Auditoria[]
+}
+
+model Auditoria {
+  id        Int      @id @default(autoincrement())
+  entidad   String
+  entidadId Int
+  accion    String
+  usuarioId Int?
+  usuario   Usuario? @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+  fecha     DateTime @default(now())
+  cambios   Json?
+
+  @@index([entidad, entidadId])
+  @@index([fecha])
+}
+
+/// Contador correlativo por tipo de documento. Se incrementa con bloqueo de fila
+/// dentro de la misma transacción que crea el documento.
+model Secuencia {
+  tipo   TipoSecuencia @id
+  ultimo Int           @default(0)
+}
+
+/// Parámetros editables por el administrador (datos de la empresa emisora, valores por defecto).
+model Parametro {
+  clave         String   @id
+  valor         String
+  descripcion   String
+  actualizadoEn DateTime @updatedAt
+}
+
+// ───────────────────────────── Catálogos ─────────────────────────────
+
+/// Las 14 listas maestras de la hoja BaseDatos. `codigo` identifica valores que
+/// gobiernan lógica (tipos de móvil, categorías de empresa) para no depender del texto.
+model CatalogoItem {
+  id               Int          @id @default(autoincrement())
+  tipo             TipoCatalogo
+  valor            String
+  codigo           String?
+  orden            Int          @default(0)
+  activo           Boolean      @default(true)
+  creadoEn         DateTime     @default(now())
+  actualizadoEn    DateTime     @updatedAt
+  creadoPorId      Int?
+  actualizadoPorId Int?
+
+  empresasCategoria         Empresa[]         @relation("EmpresaCategoria")
+  movilesTipo               Movil[]           @relation("MovilTipo")
+  rutasOrigen               RutaTarifa[]      @relation("RutaOrigen")
+  rutasDestino              RutaTarifa[]      @relation("RutaDestino")
+  rutasUnidad               RutaTarifa[]      @relation("RutaUnidad")
+  retirosTrazabilidad       OrdenRetiro[]     @relation("RetiroTrazabilidad")
+  retirosOrigen             OrdenRetiro[]     @relation("RetiroOrigen")
+  retirosDestino            OrdenRetiro[]     @relation("RetiroDestino")
+  retirosDepositoRetiro     OrdenRetiro[]     @relation("RetiroDepositoRetiro")
+  retirosDepositoEntrega    OrdenRetiro[]     @relation("RetiroDepositoEntrega")
+  retirosPuerto             OrdenRetiro[]     @relation("RetiroPuerto")
+  valesDineroSitio          ValeDinero[]      @relation("ValeDineroSitio")
+  valesDineroFormaPago      ValeDinero[]      @relation("ValeDineroFormaPago")
+  guiasEspecie              GuiaFlete[]       @relation("GuiaEspecie")
+  guiasUmEspecie            GuiaFlete[]       @relation("GuiaUmEspecie")
+  guiasUmTarifa             GuiaFlete[]       @relation("GuiaUmTarifa")
+  combustibleSitio          ValeCombustible[] @relation("CombustibleSitio")
+  combustibleFormaPago      ValeCombustible[] @relation("CombustibleFormaPago")
+  combustibleTipoDocumento  ValeCombustible[] @relation("CombustibleTipoDocumento")
+  rendicionesSitio          Rendicion[]       @relation("RendicionSitio")
+  gastosTipoDocumento       RendicionGasto[]  @relation("GastoTipoDocumento")
+  gastosItem                RendicionGasto[]  @relation("GastoItem")
+
+  @@unique([tipo, valor])
+  @@index([tipo, orden])
+}
+
+// ───────────────────────────── Mantenedores ─────────────────────────────
+
+model Empresa {
+  id               Int          @id @default(autoincrement())
+  rut              String       @unique
+  razonSocial      String
+  activo           Boolean      @default(true)
+  propietario      String?
+  fono             String?
+  email            String?
+  categoriaId      Int
+  categoria        CatalogoItem @relation("EmpresaCategoria", fields: [categoriaId], references: [id])
+  creadoEn         DateTime     @default(now())
+  actualizadoEn    DateTime     @updatedAt
+  creadoPorId      Int?
+  actualizadoPorId Int?
+
+  moviles       Movil[]
+  conductores   Conductor[]
+  asignaciones  Asignacion[]
+  ordenesRetiro OrdenRetiro[]
+}
+
+model Cliente {
+  id                     Int      @id @default(autoincrement())
+  rut                    String   @unique
+  nombre                 String
+  activo                 Boolean  @default(true)
+  giro                   String?
+  direccion              String?
+  contactoOperaciones    String?
+  contactoAdministrativo String?
+  fono                   String?
+  email                  String?
+  creadoEn               DateTime @default(now())
+  actualizadoEn          DateTime @updatedAt
+  creadoPorId            Int?
+  actualizadoPorId       Int?
+
+  packings      Packing[]
+  rutas         RutaTarifa[]
+  ordenesRetiro OrdenRetiro[]
+}
+
+model Packing {
+  id               Int      @id @default(autoincrement())
+  codigo           String   @unique
+  nombre           String
+  ubicacion        String?
+  activo           Boolean  @default(true)
+  clienteId        Int
+  cliente          Cliente  @relation(fields: [clienteId], references: [id])
+  creadoEn         DateTime @default(now())
+  actualizadoEn    DateTime @updatedAt
+  creadoPorId      Int?
+  actualizadoPorId Int?
+
+  retirosCarga   OrdenRetiro[] @relation("RetiroPackingCarga")
+  retirosEntrega OrdenRetiro[] @relation("RetiroPackingEntrega")
+  cargas         OrdenCarga[]  @relation("CargaPacking")
+}
+
+model Movil {
+  id                     Int          @id @default(autoincrement())
+  patente                String       @unique
+  marca                  String?
+  modelo                 String?
+  anio                   Int?
+  color                  String?
+  numeroMotor            String?
+  /// N° de chasis del padrón (VIN); no confundir con un remolque de tipo chasis.
+  numeroChasis           String?
+  tipoId                 Int
+  tipo                   CatalogoItem @relation("MovilTipo", fields: [tipoId], references: [id])
+  activo                 Boolean      @default(true)
+  empresaId              Int
+  empresa                Empresa      @relation(fields: [empresaId], references: [id])
+  vencRevisionTecnica    DateTime?    @db.Date
+  vencPermisoCirculacion DateTime?    @db.Date
+  vencSeguro             DateTime?    @db.Date
+  creadoEn               DateTime     @default(now())
+  actualizadoEn          DateTime     @updatedAt
+  creadoPorId            Int?
+  actualizadoPorId       Int?
+
+  asignacionesCamion     Asignacion[]      @relation("AsignacionCamion")
+  asignacionesChasis     Asignacion[]      @relation("AsignacionChasis")
+  asignacionesThermo     Asignacion[]      @relation("AsignacionThermo")
+  asignacionesPlataforma Asignacion[]      @relation("AsignacionPlataforma")
+  retirosCamion          OrdenRetiro[]     @relation("RetiroCamion")
+  retirosRemolque        OrdenRetiro[]     @relation("RetiroRemolque")
+  combustibleCamion      ValeCombustible[] @relation("CombustibleCamion")
+  combustibleRemolque    ValeCombustible[] @relation("CombustibleRemolque")
+}
+
+model Conductor {
+  id               Int           @id @default(autoincrement())
+  rut              String        @unique
+  nombre           String
+  activo           Boolean       @default(true)
+  tipo             TipoConductor
+  empresaId        Int
+  empresa          Empresa       @relation(fields: [empresaId], references: [id])
+  /// Fracción: 0.08 = 8 %.
+  comision         Float?
+  numeroLicencia   String?
+  vencLicencia     DateTime?     @db.Date
+  fechaIngreso     DateTime?     @db.Date
+  terminoContrato  DateTime?     @db.Date
+  direccion        String?
+  telefono         String?
+  numeroCuenta     String?
+  banco            String?
+  creadoEn         DateTime      @default(now())
+  actualizadoEn    DateTime      @updatedAt
+  creadoPorId      Int?
+  actualizadoPorId Int?
+
+  asignaciones  Asignacion[]
+  ordenesRetiro OrdenRetiro[]
+}
+
+/// Configuración camión + conductor + remolques. Una fila con fechaTermino nula es la
+/// asignación vigente; al cambiarla se cierra la anterior y se crea una nueva (historial).
+/// La migración agrega índices únicos parciales: una sola vigente por camión y por conductor.
+model Asignacion {
+  id               Int        @id @default(autoincrement())
+  empresaId        Int
+  empresa          Empresa    @relation(fields: [empresaId], references: [id])
+  camionId         Int
+  camion           Movil      @relation("AsignacionCamion", fields: [camionId], references: [id])
+  conductorId      Int?
+  conductor        Conductor? @relation(fields: [conductorId], references: [id])
+  chasisId         Int?
+  chasis           Movil?     @relation("AsignacionChasis", fields: [chasisId], references: [id])
+  thermoId         Int?
+  thermo           Movil?     @relation("AsignacionThermo", fields: [thermoId], references: [id])
+  plataformaId     Int?
+  plataforma       Movil?     @relation("AsignacionPlataforma", fields: [plataformaId], references: [id])
+  fechaAsignacion  DateTime   @db.Date
+  fechaTermino     DateTime?  @db.Date
+  creadoEn         DateTime   @default(now())
+  actualizadoEn    DateTime   @updatedAt
+  creadoPorId      Int?
+  actualizadoPorId Int?
+
+  @@index([camionId, fechaTermino])
+}
+
+model RutaTarifa {
+  id               Int          @id @default(autoincrement())
+  codigo           String       @unique
+  clienteId        Int
+  cliente          Cliente      @relation(fields: [clienteId], references: [id])
+  origenId         Int
+  origen           CatalogoItem @relation("RutaOrigen", fields: [origenId], references: [id])
+  destinoId        Int
+  destino          CatalogoItem @relation("RutaDestino", fields: [destinoId], references: [id])
+  unidadId         Int
+  unidad           CatalogoItem @relation("RutaUnidad", fields: [unidadId], references: [id])
+  /// Generado: "ORIGEN - DESTINO - UNIDAD".
+  tramo            String
+  distanciaKm      Float?
+  valor            Int
+  vigenciaDesde    DateTime?    @db.Date
+  vigenciaHasta    DateTime?    @db.Date
+  activo           Boolean      @default(true)
+  creadoEn         DateTime     @default(now())
+  actualizadoEn    DateTime     @updatedAt
+  creadoPorId      Int?
+  actualizadoPorId Int?
+
+  cargas OrdenCarga[] @relation("CargaTramo")
+  guias  GuiaFlete[]
+
+  @@index([clienteId])
+}
+
+// ───────────────────────────── Documentos operativos ─────────────────────────────
+
+model OrdenRetiro {
+  id                Int               @id @default(autoincrement())
+  numero            Int               @unique
+  fecha             DateTime          @db.Date
+  estado            EstadoOrdenRetiro @default(ABIERTA)
+  trazabilidadId    Int
+  trazabilidad      CatalogoItem      @relation("RetiroTrazabilidad", fields: [trazabilidadId], references: [id])
+  conductorId       Int
+  conductor         Conductor         @relation(fields: [conductorId], references: [id])
+  camionId          Int
+  camion            Movil             @relation("RetiroCamion", fields: [camionId], references: [id])
+  remolqueId        Int?
+  remolque          Movil?            @relation("RetiroRemolque", fields: [remolqueId], references: [id])
+  /// Copia del tipo del remolque al momento de emitir.
+  tipoRemolque      String?
+  empresaId         Int
+  empresa           Empresa           @relation(fields: [empresaId], references: [id])
+  clienteId         Int
+  cliente           Cliente           @relation(fields: [clienteId], references: [id])
+  origenId          Int
+  origen            CatalogoItem      @relation("RetiroOrigen", fields: [origenId], references: [id])
+  destinoId         Int
+  destino           CatalogoItem      @relation("RetiroDestino", fields: [destinoId], references: [id])
+  depositoRetiroId  Int?
+  depositoRetiro    CatalogoItem?     @relation("RetiroDepositoRetiro", fields: [depositoRetiroId], references: [id])
+  packingCargaId    Int?
+  packingCarga      Packing?          @relation("RetiroPackingCarga", fields: [packingCargaId], references: [id])
+  fechaCarga        DateTime?         @db.Date
+  horaCarga         String?
+  depositoEntregaId Int?
+  depositoEntrega   CatalogoItem?     @relation("RetiroDepositoEntrega", fields: [depositoEntregaId], references: [id])
+  packingEntregaId  Int?
+  packingEntrega    Packing?          @relation("RetiroPackingEntrega", fields: [packingEntregaId], references: [id])
+  /// Segundo "Destino" de la planilla: texto libre (terminal, consignatario, etc.).
+  destinoFinal      String?
+  nave              String?
+  mtb               String?
+  booking           String?
+  puertoEmbarqueId  Int?
+  puertoEmbarque    CatalogoItem?     @relation("RetiroPuerto", fields: [puertoEmbarqueId], references: [id])
+  fechaEmbarque     DateTime?         @db.Date
+  horaEmbarque      String?
+  opNumero          String?
+  ordenCompra       String?
+  observaciones     String?
+  motivoAnulacion   String?
+  anuladoEn         DateTime?
+  creadoEn          DateTime          @default(now())
+  actualizadoEn     DateTime          @updatedAt
+  creadoPorId       Int?
+  actualizadoPorId  Int?
+
+  valesDinero      ValeDinero[]
+  ordenesCarga     OrdenCarga[]
+  valesCombustible ValeCombustible[]
+
+  @@index([fecha])
+  @@index([estado])
+}
+
+model ValeDinero {
+  id               Int             @id @default(autoincrement())
+  numero           Int             @unique
+  ordenRetiroId    Int
+  ordenRetiro      OrdenRetiro     @relation(fields: [ordenRetiroId], references: [id])
+  fechaEntrega     DateTime        @db.Date
+  concepto         String          @default("FLETE")
+  glosa            String?
+  sitioEntregaId   Int
+  sitioEntrega     CatalogoItem    @relation("ValeDineroSitio", fields: [sitioEntregaId], references: [id])
+  monto            Int
+  formaPagoId      Int
+  formaPago        CatalogoItem    @relation("ValeDineroFormaPago", fields: [formaPagoId], references: [id])
+  estado           EstadoDocumento @default(EMITIDO)
+  motivoAnulacion  String?
+  anuladoEn        DateTime?
+  creadoEn         DateTime        @default(now())
+  actualizadoEn    DateTime        @updatedAt
+  creadoPorId      Int?
+  actualizadoPorId Int?
+
+  @@index([fechaEntrega])
+  @@index([ordenRetiroId])
+}
+
+model OrdenCarga {
+  id               Int              @id @default(autoincrement())
+  numero           Int              @unique
+  ordenRetiroId    Int
+  ordenRetiro      OrdenRetiro      @relation(fields: [ordenRetiroId], references: [id])
+  estado           EstadoOrdenCarga @default(ABIERTA)
+  /// Tramo principal del flete (Rutas Tarifas del cliente).
+  tramoId          Int?
+  tramo            RutaTarifa?      @relation("CargaTramo", fields: [tramoId], references: [id])
+  fechaCarga       DateTime         @db.Date
+  horaCarga        String?
+  packingCargaId   Int?
+  packingCarga     Packing?         @relation("CargaPacking", fields: [packingCargaId], references: [id])
+  /// Copias de la orden de retiro al momento de emitir.
+  patenteCamion    String
+  patenteRemolque  String?
+  /// Correlativo de hoja de ruta, asignado al confirmar las guías.
+  hojaRuta         Int?             @unique
+  guiasConfirmadas DateTime?
+  totalNeto        Int              @default(0)
+  observaciones    String?
+  motivoAnulacion  String?
+  anuladoEn        DateTime?
+  creadoEn         DateTime         @default(now())
+  actualizadoEn    DateTime         @updatedAt
+  creadoPorId      Int?
+  actualizadoPorId Int?
+
+  guias       GuiaFlete[]
+  rendiciones Rendicion[]
+
+  @@index([fechaCarga])
+  @@index([ordenRetiroId])
+}
+
+model GuiaFlete {
+  id               Int           @id @default(autoincrement())
+  ordenCargaId     Int
+  ordenCarga       OrdenCarga    @relation(fields: [ordenCargaId], references: [id], onDelete: Cascade)
+  linea            Int
+  numeroGuia       String
+  fechaGuia        DateTime      @db.Date
+  especieId        Int?
+  especie          CatalogoItem? @relation("GuiaEspecie", fields: [especieId], references: [id])
+  umEspecieId      Int?
+  umEspecie        CatalogoItem? @relation("GuiaUmEspecie", fields: [umEspecieId], references: [id])
+  cantidadEspecie  Float?
+  numeroContenedor String?
+  tramoId          Int
+  tramo            RutaTarifa    @relation(fields: [tramoId], references: [id])
+  /// Copia del texto del tramo y del valor unitario de la tarifa al momento de emitir.
+  tramoTexto       String
+  umTarifaId       Int?
+  umTarifa         CatalogoItem? @relation("GuiaUmTarifa", fields: [umTarifaId], references: [id])
+  cantidadTarifa   Float
+  valorUnitario    Int
+  total            Int
+
+  @@index([ordenCargaId])
+}
+
+model ValeCombustible {
+  id                     Int             @id @default(autoincrement())
+  numero                 Int             @unique
+  ordenRetiroId          Int
+  ordenRetiro            OrdenRetiro     @relation(fields: [ordenRetiroId], references: [id])
+  fechaEntrega           DateTime        @db.Date
+  horaEntrega            String?
+  sitioEntregaId         Int
+  sitioEntrega           CatalogoItem    @relation("CombustibleSitio", fields: [sitioEntregaId], references: [id])
+  formaPagoId            Int?
+  formaPago              CatalogoItem?   @relation("CombustibleFormaPago", fields: [formaPagoId], references: [id])
+  tipoDocumentoId        Int?
+  tipoDocumento          CatalogoItem?   @relation("CombustibleTipoDocumento", fields: [tipoDocumentoId], references: [id])
+  camionId               Int
+  camion                 Movil           @relation("CombustibleCamion", fields: [camionId], references: [id])
+  remolqueId             Int?
+  remolque               Movil?          @relation("CombustibleRemolque", fields: [remolqueId], references: [id])
+  numeralInicialCamion   Float?
+  numeralFinalCamion     Float?
+  numeralInicialRemolque Float?
+  numeralFinalRemolque   Float?
+  litrosCamion           Float           @default(0)
+  litrosRemolque         Float           @default(0)
+  totalLitros            Float           @default(0)
+  valorLitro             Int
+  total                  Int             @default(0)
+  observaciones          String?
+  estado                 EstadoDocumento @default(EMITIDO)
+  motivoAnulacion        String?
+  anuladoEn              DateTime?
+  creadoEn               DateTime        @default(now())
+  actualizadoEn          DateTime        @updatedAt
+  creadoPorId            Int?
+  actualizadoPorId       Int?
+
+  @@index([fechaEntrega])
+  @@index([ordenRetiroId])
+}
+
+model Rendicion {
+  id               Int              @id @default(autoincrement())
+  numero           Int              @unique
+  ordenCargaId     Int
+  ordenCarga       OrdenCarga       @relation(fields: [ordenCargaId], references: [id])
+  fecha            DateTime         @db.Date
+  fechaSalida      DateTime?        @db.Date
+  horaSalida       String?
+  fechaLlegada     DateTime?        @db.Date
+  horaLlegada      String?
+  odometroInicial  Int?
+  odometroFinal    Int?
+  kmRecorridos     Int?
+  observaciones    String?
+  fechaEntrega     DateTime?        @db.Date
+  sitioEntregaId   Int?
+  sitioEntrega     CatalogoItem?    @relation("RendicionSitio", fields: [sitioEntregaId], references: [id])
+  peajes           Int              @default(0)
+  carga            Int              @default(0)
+  descarga         Int              @default(0)
+  totalViaticos    Int              @default(0)
+  totalOtrosGastos Int              @default(0)
+  totalGeneral     Int              @default(0)
+  estado           EstadoDocumento  @default(EMITIDO)
+  motivoAnulacion  String?
+  anuladoEn        DateTime?
+  creadoEn         DateTime         @default(now())
+  actualizadoEn    DateTime         @updatedAt
+  creadoPorId      Int?
+  actualizadoPorId Int?
+
+  viaticos RendicionViatico[]
+  gastos   RendicionGasto[]
+
+  @@index([fecha])
+  @@index([ordenCargaId])
+}
+
+model RendicionViatico {
+  id          Int       @id @default(autoincrement())
+  rendicionId Int
+  rendicion   Rendicion @relation(fields: [rendicionId], references: [id], onDelete: Cascade)
+  linea       Int
+  fecha       DateTime  @db.Date
+  desayuno    Int       @default(0)
+  almuerzo    Int       @default(0)
+  comida      Int       @default(0)
+  total       Int       @default(0)
+}
+
+model RendicionGasto {
+  id              Int           @id @default(autoincrement())
+  rendicionId     Int
+  rendicion       Rendicion     @relation(fields: [rendicionId], references: [id], onDelete: Cascade)
+  linea           Int
+  tipoDocumentoId Int?
+  tipoDocumento   CatalogoItem? @relation("GastoTipoDocumento", fields: [tipoDocumentoId], references: [id])
+  numeroDocumento String?
+  rutProveedor    String?
+  fecha           DateTime?     @db.Date
+  monto           Int
+  itemGastoId     Int?
+  itemGasto       CatalogoItem? @relation("GastoItem", fields: [itemGastoId], references: [id])
+  observaciones   String?
+}

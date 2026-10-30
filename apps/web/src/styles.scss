@@ -1,0 +1,309 @@
+@import 'primeicons/primeicons.css';
+
+:root {
+  --nt-fuente:
+    'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+  --nt-fondo: #f4f6f9;
+  --nt-lateral-fondo: #ffffff;
+  --nt-tarjeta-sombra: 0 1px 2px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.04);
+  --nt-exito: #15803d;
+  --nt-alerta: #b45309;
+  --nt-peligro: #b91c1c;
+  --nt-radio: 12px;
+  --nt-tabla-encabezado: #f8fafc;
+  color-scheme: light;
+}
+
+:root.nt-oscuro {
+  --nt-fondo: #0b1120;
+  --nt-lateral-fondo: #0f172a;
+  --nt-tarjeta-sombra: none;
+  --nt-exito: #4ade80;
+  --nt-alerta: #fbbf24;
+  --nt-peligro: #f87171;
+  --nt-tabla-encabezado: #151f33;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 15px;
+}
+
+body {
+  margin: 0;
+  font-family: var(--nt-fuente);
+  background: var(--nt-fondo);
+  color: var(--p-text-color);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+a {
+  color: var(--p-primary-color);
+}
+
+/* ───────── Encabezado de página ───────── */
+.nt-encabezado {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+
+  h1 {
+    font-size: 1.45rem;
+    font-weight: 700;
+  }
+
+  p {
+    margin: 0.3rem 0 0;
+    color: var(--p-text-muted-color);
+    font-size: 0.9rem;
+  }
+
+  .nt-encabezado-acciones {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+}
+
+/* ───────── Tarjetas ───────── */
+.nt-tarjeta {
+  background: var(--p-content-background);
+  border: 1px solid var(--p-content-border-color);
+  border-radius: var(--nt-radio);
+  box-shadow: var(--nt-tarjeta-sombra);
+  padding: 1.25rem;
+}
+
+.nt-tarjeta {
+  margin-bottom: 1rem;
+}
+
+.nt-campo input.calculado {
+  background: var(--p-content-hover-background);
+  color: var(--p-text-color);
+  font-weight: 600;
+  cursor: default;
+}
+
+.nt-tarjeta-titulo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: -0.15rem 0 1rem;
+
+  h2 {
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  small {
+    color: var(--p-text-muted-color);
+  }
+}
+
+/* ───────── Grillas de formulario ───────── */
+.nt-grilla {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem 1.25rem;
+}
+
+.nt-campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+
+  > label {
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--p-text-color);
+  }
+
+  .requerido::after {
+    content: ' *';
+    color: var(--nt-peligro);
+  }
+
+  .nt-error {
+    color: var(--nt-peligro);
+    font-size: 0.78rem;
+  }
+
+  .nt-ayuda {
+    color: var(--p-text-muted-color);
+    font-size: 0.78rem;
+  }
+}
+
+.nt-ancho-2 {
+  grid-column: span 2;
+}
+
+.nt-ancho-3 {
+  grid-column: span 3;
+}
+
+.nt-ancho-4 {
+  grid-column: 1 / -1;
+}
+
+/* Datos heredados en solo lectura */
+.nt-dato {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+
+  .etiqueta {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--p-text-muted-color);
+  }
+
+  .valor {
+    font-weight: 600;
+    font-size: 0.92rem;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 1100px) {
+  .nt-grilla {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .nt-ancho-3 {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 640px) {
+  .nt-grilla {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .nt-ancho-2,
+  .nt-ancho-3 {
+    grid-column: auto;
+  }
+}
+
+/* ───────── Totales ───────── */
+.nt-totales {
+  display: flex;
+  justify-content: flex-end;
+  gap: 2rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--p-content-border-color);
+
+  .total {
+    text-align: right;
+
+    span {
+      display: block;
+      font-size: 0.75rem;
+      color: var(--p-text-muted-color);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    strong {
+      font-size: 1.15rem;
+    }
+
+    &.principal strong {
+      font-size: 1.4rem;
+      color: var(--p-primary-color);
+    }
+  }
+}
+
+/* ───────── Utilidades ───────── */
+.nt-derecha {
+  text-align: right;
+}
+
+.nt-tenue {
+  color: var(--p-text-muted-color);
+}
+
+.nt-mono {
+  font-variant-numeric: tabular-nums;
+}
+
+.nt-fila {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.nt-espacio {
+  flex: 1;
+}
+
+.nt-vencido {
+  color: var(--nt-peligro);
+  font-weight: 600;
+}
+
+.nt-por-vencer {
+  color: var(--nt-alerta);
+  font-weight: 600;
+}
+
+/* Ajustes de PrimeNG */
+.p-datatable .p-datatable-tbody > tr > td {
+  font-variant-numeric: tabular-nums;
+}
+
+.p-datatable-sm .p-datatable-thead > tr > th {
+  white-space: nowrap;
+}
+
+.p-dialog .p-dialog-content {
+  padding-top: 0.25rem;
+}
+
+.p-select-option .nt-opcion-detalle,
+.nt-opcion-detalle {
+  margin-left: auto;
+  padding-left: 1rem;
+  font-size: 0.78rem;
+  color: var(--p-text-muted-color);
+}
+
+.p-select-option .nt-opcion-detalle.nt-opcion-alerta,
+.nt-opcion-detalle.nt-opcion-alerta {
+  color: var(--nt-alerta);
+}
+
+.nt-drawer .p-drawer-content {
+  padding: 0 0.75rem 1rem;
+}
+
+/* Filtro de lista de las grillas: su panel se abre fuera del componente de la tabla. */
+.p-datatable-filter-overlay .filtro-lista {
+  width: 15rem;
+}

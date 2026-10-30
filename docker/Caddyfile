@@ -1,0 +1,27 @@
+# Sirve la web y redirige /api a la API. Con DOMINIO definido (ej. nexustrack.miempresa.cl)
+# Caddy obtiene y renueva el certificado HTTPS automáticamente. Sin dominio, escucha en :80.
+{$DOMINIO::80} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+
+	handle /api/* {
+		reverse_proxy api:3100
+	}
+
+	handle {
+		root * /srv
+		@recursos path *.js *.css *.woff2 *.svg *.png
+		header @recursos Cache-Control "public, max-age=31536000, immutable"
+		header /index.html Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}

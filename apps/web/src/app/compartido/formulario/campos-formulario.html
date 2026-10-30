@@ -1,0 +1,175 @@
+<div class="nt-grilla" [formGroup]="form()">
+  @for (c of campos(); track c.campo) {
+    <div class="nt-campo" [class]="'nt-ancho-' + (c.ancho ?? 1)">
+      <label [for]="'c-' + c.campo" [class.requerido]="c.requerido && !soloLectura()">{{
+        c.etiqueta
+      }}</label>
+      @switch (c.tipo) {
+        @case ('select') {
+          <p-select
+            [inputId]="'c-' + c.campo"
+            [formControlName]="c.campo"
+            [options]="c.opciones?.(valores()) ?? []"
+            optionLabel="label"
+            optionValue="value"
+            [filter]="(c.opciones?.(valores())?.length ?? 0) > 7"
+            filterBy="label,detalle"
+            [showClear]="!c.requerido"
+            [placeholder]="c.placeholder ?? 'Seleccione'"
+            appendTo="body"
+            [fluid]="true"
+            [readonly]="soloLectura()"
+          >
+            <ng-template #item let-o>
+              <div class="nt-fila" style="width: 100%">
+                <span [class.nt-tenue]="o.inactivo"
+                  >{{ o.label }}{{ o.inactivo ? ' (inactivo)' : '' }}</span
+                >
+                @if (o.detalle) {
+                  <span class="nt-opcion-detalle" [class.nt-opcion-alerta]="o.alerta">{{
+                    o.detalle
+                  }}</span>
+                }
+              </div>
+            </ng-template>
+          </p-select>
+        }
+        @case ('fecha') {
+          <nt-fecha
+            [inputId]="'c-' + c.campo"
+            [formControlName]="c.campo"
+            [soloLectura]="soloLectura()"
+          />
+        }
+        @case ('rut') {
+          <input
+            pInputText
+            ntRut
+            [id]="'c-' + c.campo"
+            [formControlName]="c.campo"
+            [placeholder]="c.placeholder ?? '12.345.678-9'"
+            [readonly]="soloLectura()"
+          />
+        }
+        @case ('pesos') {
+          <p-inputnumber
+            [inputId]="'c-' + c.campo"
+            [formControlName]="c.campo"
+            mode="currency"
+            currency="CLP"
+            locale="es-CL"
+            [minFractionDigits]="0"
+            [maxFractionDigits]="0"
+            [min]="c.min ?? 0"
+            [fluid]="true"
+            [readonly]="soloLectura()"
+          />
+        }
+        @case ('porcentaje') {
+          <p-inputnumber
+            [inputId]="'c-' + c.campo"
+            [formControlName]="c.campo"
+            suffix=" %"
+            locale="es-CL"
+            [minFractionDigits]="0"
+            [maxFractionDigits]="2"
+            [min]="0"
+            [max]="100"
+            [fluid]="true"
+            [readonly]="soloLectura()"
+          />
+        }
+        @case ('entero') {
+          <p-inputnumber
+            [inputId]="'c-' + c.campo"
+            [formControlName]="c.campo"
+            locale="es-CL"
+            [useGrouping]="c.agrupar ?? true"
+            [min]="c.min"
+            [max]="c.max"
+            [fluid]="true"
+            [readonly]="soloLectura()"
+          />
+        }
+        @case ('decimal') {
+          <p-inputnumber
+            [inputId]="'c-' + c.campo"
+            [formControlName]="c.campo"
+            locale="es-CL"
+            [minFractionDigits]="0"
+            [maxFractionDigits]="c.decimales ?? 2"
+            [min]="c.min"
+            [max]="c.max"
+            [fluid]="true"
+            [readonly]="soloLectura()"
+          />
+        }
+        @case ('booleano') {
+          <p-toggleswitch
+            [inputId]="'c-' + c.campo"
+            [formControlName]="c.campo"
+            [readonly]="soloLectura()"
+          />
+        }
+        @case ('textarea') {
+          <textarea
+            pTextarea
+            [id]="'c-' + c.campo"
+            [formControlName]="c.campo"
+            rows="3"
+            [autoResize]="true"
+            [readonly]="soloLectura()"
+          ></textarea>
+        }
+        @case ('password') {
+          <p-password
+            [inputId]="'c-' + c.campo"
+            [formControlName]="c.campo"
+            [toggleMask]="true"
+            [feedback]="false"
+            [fluid]="true"
+            autocomplete="new-password"
+          />
+        }
+        @case ('hora') {
+          <input
+            pInputText
+            type="time"
+            [id]="'c-' + c.campo"
+            [formControlName]="c.campo"
+            [readonly]="soloLectura()"
+          />
+        }
+        @case ('calculado') {
+          <input
+            pInputText
+            [id]="'c-' + c.campo"
+            [value]="c.calcular?.(valores()) ?? ''"
+            readonly
+            tabindex="-1"
+            class="calculado"
+          />
+        }
+        @default {
+          <input
+            pInputText
+            [id]="'c-' + c.campo"
+            [formControlName]="c.campo"
+            [type]="c.tipo === 'email' ? 'email' : c.tipo === 'telefono' ? 'tel' : 'text'"
+            [placeholder]="c.placeholder ?? ''"
+            [attr.maxlength]="c.max ?? 200"
+            [style.text-transform]="c.mayusculas ? 'uppercase' : null"
+            (blur)="normalizar(c)"
+            [readonly]="soloLectura()"
+            autocomplete="off"
+          />
+        }
+      }
+      @if (error(c.campo); as e) {
+        <small class="nt-error">{{ e }}</small>
+      } @else if (c.ayuda) {
+        <small class="nt-ayuda">{{ c.ayuda }}</small>
+      }
+    </div>
+  }
+</div>

@@ -1,0 +1,45 @@
+<div class="nt-encabezado">
+  <div>
+    <h1>{{ config().titulo }}</h1>
+    <p>{{ config().descripcion }}</p>
+  </div>
+  <div class="nt-encabezado-acciones">
+    @if (puedeEditar()) {
+      <p-button
+        [label]="(config().femenino ? 'Nueva ' : 'Nuevo ') + config().singular"
+        icon="pi pi-plus"
+        (onClick)="nuevo()"
+      />
+    }
+  </div>
+</div>
+
+<nt-tabla
+  [filas]="filas()"
+  [columnas]="config().columnas"
+  [titulo]="config().titulo"
+  [cargando]="cargando()"
+  [claveEstado]="config().claveEstado"
+  (seleccionar)="abrir($event)"
+/>
+
+<p-dialog
+  [header]="tituloDialogo()"
+  [(visible)]="dialogo"
+  [modal]="true"
+  [draggable]="false"
+  [style]="{ width: config().anchoDialogo ?? '52rem', maxWidth: '96vw' }"
+  [dismissableMask]="!puedeEditar()"
+>
+  @if (form(); as f) {
+    <form (submit)="$event.preventDefault(); guardar()" id="form-mantenedor">
+      <nt-campos [form]="f" [campos]="config().campos" [soloLectura]="!puedeEditar()" />
+    </form>
+  }
+  <ng-template #footer>
+    <p-button label="Cerrar" severity="secondary" [text]="true" (onClick)="dialogo.set(false)" />
+    @if (puedeEditar()) {
+      <p-button label="Guardar" icon="pi pi-check" (onClick)="guardar()" [loading]="guardando()" />
+    }
+  </ng-template>
+</p-dialog>

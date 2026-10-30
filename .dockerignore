@@ -1,0 +1,19 @@
+**/node_modules
+**/dist
+**/.angular
+**/coverage
+apps/api/src/generated
+.git
+.github
+.vscode
+test-results
+playwright-report
+e2e
+**/*.log
+.env
+.env.*
+!.env.example
+!.env.produccion.example
+!.env.vps.example
+# App móvil (Flutter): no es parte de la imagen de la API
+apps/movil

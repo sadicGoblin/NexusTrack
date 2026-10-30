@@ -1,0 +1,326 @@
+@if (creando() && !retiro()) {
+  <nt-barra-documento titulo="Nueva orden de carga" volver="/operacion/ordenes-carga" />
+  <nt-selector-padre
+    titulo="Órdenes de retiro sin orden de carga"
+    instrucciones="Seleccione la orden de retiro a la que asignará la orden de carga. Solo aparecen las órdenes abiertas que aún no tienen una."
+    [filas]="candidatos()"
+    [columnas]="columnasRetiros"
+    [cargando]="cargandoCandidatos()"
+    (elegir)="elegirRetiro($event)"
+  />
+} @else {
+  <nt-barra-documento
+    titulo="Orden de carga"
+    [subtitulo]="subtitulo()"
+    [numero]="dto()?.numero ?? null"
+    [estado]="dto()?.estado ?? null"
+    [recurso]="'ordenes-carga/' + dto()?.id"
+    volver="/operacion/ordenes-carga"
+    [editable]="editable() && !!form()"
+    [anulable]="dto()?.estado === 'ABIERTA'"
+    [guardando]="guardando()"
+    (guardar)="guardar()"
+    (anular)="anular($event)"
+  >
+    @if (dto(); as d) {
+      @if (d.rendicionNumero) {
+        <p-button
+          [label]="'Ver rendición N° ' + (d.rendicionNumero | correlativo)"
+          icon="pi pi-receipt"
+          severity="secondary"
+          [text]="true"
+          [routerLink]="['/operacion/rendiciones', d.rendicionId]"
+        />
+      } @else if (d.estado === 'ABIERTA' && d.hojaRuta) {
+        <p-button
+          label="Crear rendición"
+          icon="pi pi-receipt"
+          severity="secondary"
+          [outlined]="true"
+          routerLink="/operacion/rendiciones/nuevo"
+          [queryParams]="{ carga: d.id }"
+        />
+      }
+    }
+  </nt-barra-documento>
+
+  @if (dto()?.estado === 'ANULADA') {
+    <p-message severity="error" class="aviso"
+      >Orden de carga anulada. Motivo: {{ dto()?.motivoAnulacion }}</p-message
+    >
+  }
+
+  @if (resumen(); as r) {
+    <nt-resumen-retiro [retiro]="r" [completo]="true" />
+  }
+
+  @if (form(); as f) {
+    <section class="nt-tarjeta">
+      <div class="nt-tarjeta-titulo">
+        <h2>Carga</h2>
+        @if (dto()?.hojaRuta) {
+          <small
+            >Hoja de ruta <strong>N° {{ dto()!.hojaRuta | correlativo }}</strong></small
+          >
+        } @else {
+          <small>La hoja de ruta se asigna al registrar las guías.</small>
+        }
+      </div>
+      <nt-campos [form]="f" [campos]="camposCabecera" [soloLectura]="!editable()" />
+      @if (avisoTramo(); as aviso) {
+        <p-message severity="warn" class="aviso-tramo">
+          La tarifa de este tramo {{ aviso }}. Revise el valor unitario de las guías o actualice su
+          vigencia en <a routerLink="/mantenedores/rutas-tarifas">Rutas y tarifas</a>.
+        </p-message>
+      }
+    </section>
+
+    @if (guias(); as lista) {
+      <section class="nt-tarjeta">
+        <div class="nt-tarjeta-titulo">
+          <h2>Guías del flete</h2>
+          @if (editable()) {
+            <p-button
+              label="Agregar guía"
+              icon="pi pi-plus"
+              size="small"
+              [outlined]="true"
+              (onClick)="agregarGuia()"
+            />
+          }
+        </div>
+        <div class="tabla-lineas">
+          <table>
+            <thead>
+              <tr>
+                <th>N° guía</th>
+                <th>Fecha guía</th>
+                <th>Especie</th>
+                <th>U.M. especie</th>
+                <th class="num">Cantidad</th>
+                <th>N° contenedor</th>
+                <th>Tramo / tarifa</th>
+                <th>U.M. tarifa</th>
+                <th class="num">Cantidad</th>
+                <th class="num">Valor unitario</th>
+                <th class="num">Total</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (g of lista.controls; track g; let i = $index) {
+                <tr [formGroup]="g">
+                  <td>
+                    <input
+                      pInputText
+                      formControlName="numeroGuia"
+                      class="w-guia"
+                      aria-label="N° guía"
+                    />
+                  </td>
+                  <td>
+                    <nt-fecha
+                      formControlName="fechaGuia"
+                      ariaLabel="Fecha guía"
+                      claseInput="w-fecha"
+                      [fluid]="false"
+                      [botonHoy]="false"
+                    />
+                  </td>
+                  <td>
+                    <p-select
+                      formControlName="especieId"
+                      [options]="opcionesCatalogo('ESPECIE')"
+                      optionLabel="label"
+                      optionValue="value"
+                      appendTo="body"
+                      [showClear]="true"
+                      placeholder="—"
+                      class="w-sel"
+                    />
+                  </td>
+                  <td>
+                    <p-select
+                      formControlName="umEspecieId"
+                      [options]="opcionesCatalogo('UM_ESPECIE')"
+                      optionLabel="label"
+                      optionValue="value"
+                      appendTo="body"
+                      [showClear]="true"
+                      placeholder="—"
+                      class="w-sel"
+                    />
+                  </td>
+                  <td>
+                    <p-inputnumber
+                      formControlName="cantidadEspecie"
+                      locale="es-CL"
+                      [maxFractionDigits]="2"
+                      inputStyleClass="w-num"
+                      ariaLabel="Cantidad especie"
+                    />
+                  </td>
+                  <td>
+                    <input
+                      pInputText
+                      formControlName="numeroContenedor"
+                      class="w-contenedor"
+                      style="text-transform: uppercase"
+                      aria-label="N° contenedor"
+                    />
+                  </td>
+                  <td>
+                    <p-select
+                      formControlName="tramoId"
+                      (onChange)="proponerValor(g, $event.value)"
+                      [options]="opcionesTramo()"
+                      optionLabel="label"
+                      optionValue="value"
+                      appendTo="body"
+                      [filter]="true"
+                      placeholder="Seleccione"
+                      class="w-tramo"
+                    >
+                      <ng-template #item let-o>
+                        <div class="nt-fila" style="width: 100%">
+                          <span>{{ o.label }}</span
+                          ><span class="nt-opcion-detalle" [class.nt-opcion-alerta]="o.alerta">{{
+                            o.detalle
+                          }}</span>
+                        </div>
+                      </ng-template>
+                    </p-select>
+                  </td>
+                  <td>
+                    <p-select
+                      formControlName="umTarifaId"
+                      [options]="opcionesCatalogo('UM_TARIFA')"
+                      optionLabel="label"
+                      optionValue="value"
+                      appendTo="body"
+                      [showClear]="true"
+                      placeholder="—"
+                      class="w-sel"
+                    />
+                  </td>
+                  <td>
+                    <p-inputnumber
+                      formControlName="cantidadTarifa"
+                      locale="es-CL"
+                      [maxFractionDigits]="2"
+                      inputStyleClass="w-num"
+                      ariaLabel="Cantidad tarifa"
+                    />
+                  </td>
+                  <td>
+                    <p-inputnumber
+                      formControlName="valorUnitario"
+                      mode="currency"
+                      currency="CLP"
+                      locale="es-CL"
+                      [maxFractionDigits]="0"
+                      inputStyleClass="w-pesos"
+                      ariaLabel="Valor unitario"
+                    />
+                  </td>
+                  <td class="num">
+                    <strong>{{ totalGuia(i) | pesos }}</strong>
+                  </td>
+                  <td>
+                    @if (editable()) {
+                      <p-button
+                        icon="pi pi-trash"
+                        severity="danger"
+                        [text]="true"
+                        [rounded]="true"
+                        size="small"
+                        (onClick)="quitarGuia(i)"
+                        pTooltip="Quitar guía"
+                        ariaLabel="Quitar guía"
+                      />
+                    }
+                  </td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="12" class="nt-tenue vacio">
+                    Sin guías. Agregue al menos una para asignar la hoja de ruta.
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <div class="nt-totales">
+          <div class="total principal">
+            <span>Total neto guías</span>
+            <strong>{{ totalNeto() | pesos }}</strong>
+          </div>
+        </div>
+      </section>
+    }
+  }
+}
+
+<style>
+  .aviso-tramo {
+    display: block;
+    margin-top: 0.75rem;
+  }
+  .aviso {
+    display: block;
+    margin-bottom: 1rem;
+  }
+  .tabla-lineas {
+    overflow-x: auto;
+  }
+  .tabla-lineas table {
+    border-collapse: collapse;
+    min-width: 100%;
+  }
+  .tabla-lineas th {
+    text-align: left;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--p-text-muted-color);
+    font-weight: 600;
+    padding: 0 0.35rem 0.5rem;
+    white-space: nowrap;
+  }
+  .tabla-lineas td {
+    padding: 0.25rem 0.35rem;
+    vertical-align: middle;
+  }
+  .tabla-lineas .num {
+    text-align: right;
+    white-space: nowrap;
+  }
+  .tabla-lineas .vacio {
+    padding: 1.5rem;
+    text-align: center;
+  }
+  .w-guia {
+    width: 7.5rem;
+  }
+  .w-sel {
+    width: 9.5rem;
+  }
+  .w-contenedor {
+    width: 9.5rem;
+  }
+  .w-tramo {
+    width: 17rem;
+  }
+  :host ::ng-deep .w-fecha {
+    width: 9rem;
+  }
+  :host ::ng-deep .w-num {
+    width: 5.5rem;
+    text-align: right;
+  }
+  :host ::ng-deep .w-pesos {
+    width: 8rem;
+    text-align: right;
+  }
+</style>

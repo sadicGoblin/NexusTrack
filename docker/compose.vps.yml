@@ -1,0 +1,85 @@
+# NexusTrack en un VPS que ya tiene un Caddy de otro proyecto en los puertos 80 y 443.
+# Este stack no publica puertos: la API se une a la red Docker de ese Caddy, que la
+# expone con HTTPS en su dominio. La web se publica en Firebase Hosting.
+#
+# La imagen de la API se compila fuera del VPS y se sube con scripts/desplegar-api-vps.sh.
+#
+#   docker compose -f docker/compose.vps.yml --env-file .env.vps up -d --wait
+name: nexustrack
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nexustrack
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Defina POSTGRES_PASSWORD}
+      POSTGRES_DB: nexustrack
+      TZ: America/Santiago
+      PGTZ: America/Santiago
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      default:
+        # Nombre único: la API también está en la red del Caddy, donde `db` puede ser
+        # la base de otro proyecto.
+        aliases: [nexustrack-db]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U nexustrack -d nexustrack']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    image: nexustrack-api:latest
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://nexustrack:${POSTGRES_PASSWORD}@nexustrack-db:5432/nexustrack?schema=public
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Defina JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Defina JWT_REFRESH_SECRET}
+      JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-15m}
+      JWT_REFRESH_TTL_DIAS: ${JWT_REFRESH_TTL_DIAS:-7}
+      CORS_ORIGIN: ${CORS_ORIGIN:?Defina CORS_ORIGIN con la dirección de la web}
+      COOKIE_SAMESITE: ${COOKIE_SAMESITE:-none}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@nexustrack.cl}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:?Defina SEED_ADMIN_PASSWORD}
+    networks:
+      default: {}
+      proxy:
+        aliases: [nexustrack-api]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  respaldo:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      TZ: America/Santiago
+    volumes:
+      - respaldos:/respaldos
+    entrypoint:
+      - sh
+      - -c
+      - |
+        while true; do
+          archivo=/respaldos/nexustrack-$$(date +%Y-%m-%d_%H%M).sql.gz
+          pg_dump -h nexustrack-db -U nexustrack -d nexustrack --no-owner | gzip > $$archivo && echo "Respaldo creado: $$archivo"
+          find /respaldos -name 'nexustrack-*.sql.gz' -mtime +30 -delete
+          sleep 86400
+        done
+    depends_on:
+      db:
+        condition: service_healthy
+
+networks:
+  proxy:
+    external: true
+    name: ${RED_PROXY:?Defina RED_PROXY con la red Docker del Caddy existente}
+
+volumes:
+  db-data:
+  respaldos:

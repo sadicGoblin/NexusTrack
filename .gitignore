@@ -1,0 +1,33 @@
+# Dependencias y builds
+node_modules/
+dist/
+.angular/
+coverage/
+*.tsbuildinfo
+
+# Prisma (cliente generado)
+apps/api/src/generated/
+
+# Planillas para importar en la raíz: traen datos personales y no se versionan.
+/*.xlsx
+
+# Entorno
+.env
+.env.*
+!.env.example
+!.env.produccion.example
+!.env.vps.example
+
+# Pruebas de flujo
+test-results/
+playwright-report/
+e2e/.auth/
+
+# Sistema y editores
+.DS_Store
+*.log
+.idea/
+
+# Firebase
+.firebase/
+firebase-debug.log

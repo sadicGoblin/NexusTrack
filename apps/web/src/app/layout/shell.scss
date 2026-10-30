@@ -1,0 +1,268 @@
+:host {
+  display: block;
+}
+
+.shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.lateral {
+  width: 248px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: var(--nt-lateral-fondo);
+  border-right: 1px solid var(--p-content-border-color);
+  padding: 1rem 0.75rem;
+  transition: width 0.2s ease;
+}
+
+/* Menú reducido a íconos: se angosta y recorta los textos; los íconos no se mueven. */
+.lateral.compacto {
+  width: 68px;
+
+  .marca-texto,
+  .grupo span,
+  .enlace span {
+    opacity: 0;
+  }
+
+  .grupo::after {
+    content: '';
+    position: absolute;
+    left: 0.75rem;
+    right: 0.75rem;
+    top: 55%;
+    border-top: 1px solid var(--p-content-border-color);
+  }
+}
+
+.marca-texto,
+.grupo span,
+.enlace span {
+  transition: opacity 0.15s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lateral,
+  .marca-texto,
+  .grupo span,
+  .enlace span {
+    transition: none;
+  }
+}
+
+.marca {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.25rem 0.5rem 1.25rem;
+  text-decoration: none;
+  color: inherit;
+  white-space: nowrap;
+
+  img {
+    flex-shrink: 0;
+  }
+}
+
+.marca-nombre {
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+}
+
+.marca-sub {
+  font-size: 0.75rem;
+  color: var(--p-text-muted-color);
+}
+
+.grupo {
+  position: relative;
+  white-space: nowrap;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--p-text-muted-color);
+  padding: 1rem 0.75rem 0.4rem;
+}
+
+.enlace {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  white-space: nowrap;
+  overflow: hidden;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  color: var(--p-text-color);
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: background 0.15s;
+
+  i {
+    font-size: 1rem;
+    color: var(--p-text-muted-color);
+    width: 1.1rem;
+    flex-shrink: 0;
+  }
+
+  &:hover {
+    background: var(--p-content-hover-background);
+  }
+
+  &.activo {
+    background: var(--p-highlight-background);
+    color: var(--p-highlight-color);
+
+    i {
+      color: inherit;
+    }
+  }
+}
+
+.principal {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.superior {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  height: 60px;
+  padding: 0 1.5rem;
+  background: color-mix(in srgb, var(--p-content-background) 92%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--p-content-border-color);
+}
+
+.ruta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  min-width: 0;
+
+  i {
+    font-size: 0.75rem;
+    color: var(--p-text-muted-color);
+  }
+}
+
+.ruta-grupo {
+  color: var(--p-text-muted-color);
+}
+
+.ruta-item {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.acciones {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.usuario {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 8px;
+  color: inherit;
+  font: inherit;
+
+  &:hover {
+    background: var(--p-content-hover-background);
+  }
+
+  i {
+    font-size: 0.8rem;
+    color: var(--p-text-muted-color);
+  }
+}
+
+.usuario-texto {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.2;
+}
+
+.usuario-nombre {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.usuario-rol {
+  font-size: 0.72rem;
+  color: var(--p-text-muted-color);
+}
+
+:host ::ng-deep .avatar {
+  background: var(--p-primary-color);
+  color: var(--p-primary-contrast-color);
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.contenido {
+  padding: 1.5rem;
+  width: 100%;
+}
+
+.formulario-simple {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+
+  label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-top: 0.5rem;
+  }
+}
+
+.pie-dialogo {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+}
+
+@media (max-width: 1024px) {
+  .lateral {
+    display: none;
+  }
+
+  .superior {
+    padding: 0 1rem;
+  }
+
+  .contenido {
+    padding: 1rem;
+  }
+
+  .usuario-texto {
+    display: none;
+  }
+}

@@ -1,0 +1,62 @@
+[
+ {
+  "camionId": 54,
+  "camion": "HLZR54",
+  "camionTipo": "TRACTOCAMION",
+  "empresaId": 8,
+  "empresa": "PATRICIA ALEJANDRA AVENDANO PEREDO",
+  "asignacion": {
+   "id": 29,
+   "empresaId": 8,
+   "empresa": "PATRICIA ALEJANDRA AVENDANO PEREDO",
+   "camionId": 54,
+   "camion": "HLZR54",
+   "camionTipo": "TRACTOCAMION",
+   "conductorId": 24,
+   "conductor": "MARCELO MAURICIO CACERES ORELLANA",
+   "chasisId": 55,
+   "chasis": "GRJR38",
+   "thermoId": null,
+   "thermo": null,
+   "plataformaId": null,
+   "plataforma": null,
+   "fechaAsignacion": "2026-10-30",
+   "fechaTermino": null,
+   "vigente": true
+  }
+ },
+ {
+  "camionId": 52,
+  "camion": "YR7096",
+  "camionTipo": "TRACTOCAMION",
+  "empresaId": 6,
+  "empresa": "TRANSPORTE RAMON EDUARDO ROJAS SANTOS E.I.R.L.",
+  "asignacion": {
+   "id": 28,
+   "empresaId": 6,
+   "empresa": "TRANSPORTE RAMON EDUARDO ROJAS SANTOS E.I.R.L.",
+   "camionId": 52,
+   "camion": "YR7096",
+   "camionTipo": "TRACTOCAMION",
+   "conductorId": 25,
+   "conductor": "RAMON EDUARDO ROJAS SANTOS",
+   "chasisId": 53,
+   "chasis": "JK7638",
+   "thermoId": null,
+   "thermo": null,
+   "plataformaId": null,
+   "plataforma": null,
+   "fechaAsignacion": "2026-10-30",
+   "fechaTermino": null,
+   "vigente": true
+  }
+ },
+ {
+  "camionId": 999999,
+  "camion": "ZZZZ99",
+  "camionTipo": "TRACTOCAMION",
+  "empresaId": 8,
+  "empresa": "PATRICIA ALEJANDRA AVENDANO PEREDO",
+  "asignacion": null
+ }
+]
