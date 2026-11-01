@@ -48,6 +48,7 @@ import { TablaDatos, type ColumnaTabla } from '../../compartido/tabla/tabla-dato
           [columnas]="columnas"
           [titulo]="meta().titulo"
           [claveEstado]="'catalogo'"
+          [cargando]="cargando()"
           (seleccionar)="abrir($event)"
         >
           <p-button
@@ -161,8 +162,14 @@ export class Catalogos implements OnInit {
   orden: number | null = null;
   activo = true;
 
+  readonly cargando = signal(true);
+
   async ngOnInit(): Promise<void> {
-    await this.maestros.invalidar('catalogos');
+    try {
+      await this.maestros.invalidar('catalogos');
+    } finally {
+      this.cargando.set(false);
+    }
   }
 
   abrir(item: CatalogoItemDto | null): void {

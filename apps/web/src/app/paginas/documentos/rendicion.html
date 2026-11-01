@@ -24,6 +24,9 @@
     (guardar)="guardar()"
     (anular)="anular($event)"
   />
+  @if (!form()) {
+    <nt-cargando class="bloque" />
+  }
 
   @if (dto()?.estado === 'ANULADO') {
     <p-message severity="error" class="aviso"

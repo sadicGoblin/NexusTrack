@@ -22,6 +22,7 @@ import { DatosMaestrosService, type Opcion } from '../../nucleo/datos-maestros.s
 import { dateAIso, isoADate } from '../../nucleo/fechas';
 import { CorrelativoPipe, PesosPipe } from '../../nucleo/pipes';
 import { SesionService } from '../../nucleo/sesion.service';
+import { Cargando } from '../../compartido/cargando';
 import { BarraDocumento } from '../../compartido/documentos/barra-documento';
 import { ResumenRetiro } from '../../compartido/documentos/resumen-retiro';
 import { SelectorPadre } from '../../compartido/documentos/selector-padre';
@@ -51,6 +52,7 @@ type FormGuia = FormGroup<{
   selector: 'nt-orden-carga',
   imports: [
     BarraDocumento,
+    Cargando,
     ResumenRetiro,
     SelectorPadre,
     CamposFormulario,

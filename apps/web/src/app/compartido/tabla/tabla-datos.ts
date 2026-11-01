@@ -39,6 +39,7 @@ import {
   PesosPipe,
   PorcentajePipe,
 } from '../../nucleo/pipes';
+import { Cargando } from '../cargando';
 import { EstadoTag } from '../estado-tag';
 import { CampoFecha } from '../formulario/campo-fecha';
 
@@ -107,6 +108,7 @@ const filtroPorDefecto = (c: ColumnaTabla): TipoFiltro | false =>
     ToggleSwitch,
     Tooltip,
     EstadoTag,
+    Cargando,
     CampoFecha,
     FechaPipe,
     PesosPipe,

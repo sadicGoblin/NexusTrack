@@ -8,7 +8,7 @@
   [showCurrentPageReport]="true"
   currentPageReportTemplate="{first}–{last} de {totalRecords}"
   [globalFilterFields]="camposBusqueda()"
-  [loading]="cargando()"
+  [loading]="cargando() && filas().length > 0"
   sortMode="multiple"
   [rowHover]="true"
   size="small"
@@ -251,7 +251,7 @@
     <tr>
       <td [attr.colspan]="columnas.length + (acciones() ? 1 : 0)" class="vacio">
         @if (cargando()) {
-          Cargando…
+          <nt-cargando tamano="1.5rem" />
         } @else if (total()) {
           Ningún registro coincide con la búsqueda o los filtros.
         } @else {

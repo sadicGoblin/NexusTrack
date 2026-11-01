@@ -5,7 +5,7 @@
   [estado]="dto()?.estado ?? null"
   [recurso]="'ordenes-retiro/' + dto()?.id"
   volver="/operacion/ordenes-retiro"
-  [editable]="editable()"
+  [editable]="editable() && !!form()"
   [anulable]="dto()?.estado === 'ABIERTA'"
   [eliminable]="!!dto()"
   [eliminar]="eliminarDocumento"
@@ -13,6 +13,9 @@
   (guardar)="guardar()"
   (anular)="anular($event)"
 />
+@if (!form()) {
+  <nt-cargando class="bloque" />
+}
 
 @if (dto()?.estado === 'ANULADA') {
   <p-message severity="error" class="aviso-anulado"

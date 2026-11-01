@@ -35,7 +35,11 @@ import { CuentasModule } from './cuentas/cuentas.js';
       envFilePath: ['.env', '../../.env'],
       validate: validarEntorno,
     }),
-    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 600 }]),
+    ThrottlerModule.forRoot({
+      throttlers: [{ ttl: 60_000, limit: 600 }],
+      // Las pruebas de flujo recargan la app muchas veces por minuto desde una misma IP.
+      skipIf: () => process.env['NODE_ENV'] === 'test',
+    }),
     PrismaModule,
     AuthModule,
     UsuariosModule,

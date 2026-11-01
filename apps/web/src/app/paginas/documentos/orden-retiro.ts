@@ -18,6 +18,7 @@ import { ApiService } from '../../nucleo/api.service';
 import { DatosMaestrosService } from '../../nucleo/datos-maestros.service';
 import { CorrelativoPipe, FechaPipe, NumeroPipe, PesosPipe } from '../../nucleo/pipes';
 import { SesionService } from '../../nucleo/sesion.service';
+import { Cargando } from '../../compartido/cargando';
 import { BarraDocumento } from '../../compartido/documentos/barra-documento';
 import { EstadoTag } from '../../compartido/estado-tag';
 import { CamposFormulario } from '../../compartido/formulario/campos-formulario';
@@ -36,6 +37,7 @@ interface Seccion {
   selector: 'nt-orden-retiro',
   imports: [
     BarraDocumento,
+    Cargando,
     CamposFormulario,
     Message,
     Button,
@@ -94,9 +96,8 @@ export class OrdenRetiro {
   readonly puedeFinanzas = computed(() => this.sesion.puede('editarFinanzas'));
   readonly subtitulo = computed(() => {
     const d = this.dto();
-    return d
-      ? `${d.cliente} · ${d.origen} → ${d.destino} · ${d.conductor}`
-      : 'Complete los datos del flete. El número se asigna al emitir.';
+    if (d) return `${d.cliente} · ${d.origen} → ${d.destino} · ${d.conductor}`;
+    return this.id() ? '' : 'Complete los datos del flete. El número se asigna al emitir.';
   });
 
   private readonly m = this.maestros;

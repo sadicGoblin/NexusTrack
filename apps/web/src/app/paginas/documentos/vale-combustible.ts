@@ -16,6 +16,7 @@ import { ApiService } from '../../nucleo/api.service';
 import { DatosMaestrosService } from '../../nucleo/datos-maestros.service';
 import { NumeroPipe, PesosPipe } from '../../nucleo/pipes';
 import { SesionService } from '../../nucleo/sesion.service';
+import { Cargando } from '../../compartido/cargando';
 import { BarraDocumento } from '../../compartido/documentos/barra-documento';
 import { ResumenRetiro } from '../../compartido/documentos/resumen-retiro';
 import { SelectorPadre } from '../../compartido/documentos/selector-padre';
@@ -31,6 +32,7 @@ import { aResumen, COLUMNAS_RETIROS } from './comun';
   selector: 'nt-vale-combustible',
   imports: [
     BarraDocumento,
+    Cargando,
     ResumenRetiro,
     SelectorPadre,
     CamposFormulario,
@@ -68,6 +70,9 @@ import { aResumen, COLUMNAS_RETIROS } from './comun';
         (guardar)="guardar()"
         (anular)="anular($event)"
       />
+      @if (!form()) {
+        <nt-cargando class="bloque" />
+      }
       @if (dto()?.estado === 'ANULADO') {
         <p-message severity="error" style="display: block; margin-bottom: 1rem"
           >Vale anulado. Motivo: {{ dto()?.motivoAnulacion }}</p-message

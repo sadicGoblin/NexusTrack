@@ -4,6 +4,7 @@ import { MessageService } from 'primeng/api';
 import { Button } from 'primeng/button';
 import { InputText } from 'primeng/inputtext';
 import type { ParametroDto } from '@nexustrack/shared';
+import { Cargando } from '../../compartido/cargando';
 import { ApiService } from '../../nucleo/api.service';
 import { DatosMaestrosService } from '../../nucleo/datos-maestros.service';
 
@@ -26,7 +27,7 @@ const GRUPOS: { titulo: string; claves: string[] }[] = [
 
 @Component({
   selector: 'nt-parametros',
-  imports: [FormsModule, InputText, Button],
+  imports: [FormsModule, InputText, Button, Cargando],
   template: `
     <div class="nt-encabezado">
       <div>
@@ -34,8 +35,11 @@ const GRUPOS: { titulo: string; claves: string[] }[] = [
         <p>Datos de la empresa emisora y valores por defecto de los formularios.</p>
       </div>
     </div>
+    @if (cargando()) {
+      <nt-cargando class="bloque" />
+    }
     @for (g of grupos; track g.titulo) {
-      <section class="nt-tarjeta">
+      <section class="nt-tarjeta" [hidden]="cargando()">
         <div class="nt-tarjeta-titulo">
           <h2>{{ g.titulo }}</h2>
         </div>
@@ -96,12 +100,17 @@ export class Parametros implements OnInit {
   readonly grupos = GRUPOS;
   readonly parametros = signal<ParametroDto[]>([]);
   readonly guardando = signal<string | null>(null);
+  readonly cargando = signal(true);
   valores: Record<string, string> = {};
 
   async ngOnInit(): Promise<void> {
-    const lista = await this.api.get<ParametroDto[]>('parametros');
-    this.valores = Object.fromEntries(lista.map((p) => [p.clave, p.valor]));
-    this.parametros.set(lista);
+    try {
+      const lista = await this.api.get<ParametroDto[]>('parametros');
+      this.valores = Object.fromEntries(lista.map((p) => [p.clave, p.valor]));
+      this.parametros.set(lista);
+    } finally {
+      this.cargando.set(false);
+    }
   }
 
   parametrosDe(claves: string[]): ParametroDto[] {

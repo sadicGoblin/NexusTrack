@@ -21,9 +21,13 @@
   transition: width 0.2s ease;
 }
 
-/* Menú reducido a íconos: se angosta y recorta los textos; los íconos no se mueven. */
+/*
+ * Menú reducido a íconos: se angosta y recorta los textos; los íconos no se mueven.
+ * Ancho = por lado, padding del menú + del enlace + medio ícono (0,75 + 0,75 + 0,5 rem), más el
+ * borde: así íconos, logo, resaltado y separadores quedan en el mismo eje central.
+ */
 .lateral.compacto {
-  width: 68px;
+  width: calc(4rem + 1px);
 
   .marca-texto,
   .grupo span,
@@ -60,7 +64,8 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.25rem 0.5rem 1.25rem;
+  /* El logo (32 px) centrado en el eje de los íconos: 2 rem desde el borde menos medio logo. */
+  padding: 0.25rem 0.5rem 1.25rem calc(1.25rem - 16px);
   text-decoration: none;
   color: inherit;
   white-space: nowrap;
@@ -109,7 +114,8 @@
   i {
     font-size: 1rem;
     color: var(--p-text-muted-color);
-    width: 1.1rem;
+    width: 1rem;
+    text-align: center;
     flex-shrink: 0;
   }
 

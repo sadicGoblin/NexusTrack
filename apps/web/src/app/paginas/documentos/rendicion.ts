@@ -22,6 +22,7 @@ import { DatosMaestrosService } from '../../nucleo/datos-maestros.service';
 import { dateAIso, isoADate } from '../../nucleo/fechas';
 import { CorrelativoPipe, FechaPipe, NumeroPipe, PesosPipe } from '../../nucleo/pipes';
 import { SesionService } from '../../nucleo/sesion.service';
+import { Cargando } from '../../compartido/cargando';
 import { BarraDocumento } from '../../compartido/documentos/barra-documento';
 import { CuentaConductor } from '../../compartido/documentos/cuenta-conductor';
 import { Dato } from '../../compartido/documentos/dato';
@@ -72,6 +73,7 @@ interface CabeceraCarga {
   selector: 'nt-rendicion',
   imports: [
     BarraDocumento,
+    Cargando,
     CuentaConductor,
     ResumenRetiro,
     SelectorPadre,

@@ -46,6 +46,10 @@
     }
   </nt-barra-documento>
 
+  @if (!form()) {
+    <nt-cargando class="bloque" />
+  }
+
   @if (dto()?.estado === 'ANULADA') {
     <p-message severity="error" class="aviso"
       >Orden de carga anulada. Motivo: {{ dto()?.motivoAnulacion }}</p-message
