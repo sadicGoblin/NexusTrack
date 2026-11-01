@@ -28,8 +28,6 @@ RUN apt-get update \
  && apt-get install -y --no-install-recommends chromium fonts-liberation fonts-dejavu-core ca-certificates tzdata \
  && rm -rf /var/lib/apt/lists/*
 COPY --from=build --chown=node:node /app /app
-# Planilla de origen para la carga inicial (`npx prisma db seed`).
-COPY --chown=node:node docs/NexusTrack.xlsx docs/NexusTrack.xlsx
 # Permite limpiar versiones anteriores sin tocar imágenes de otros proyectos.
 LABEL org.opencontainers.image.title=nexustrack-api
 USER node

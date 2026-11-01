@@ -60,10 +60,12 @@ VPS=root@IP_DEL_VPS npm run deploy:api
 
 Compila la imagen de la API en su computador (requiere Docker), la sube al VPS y levanta base,
 API y respaldo. Así la compilación no ocupa la CPU del VPS, que atiende otros proyectos. La API
-aplica las migraciones al arrancar. La primera vez, cargue los datos iniciales:
+aplica las migraciones al arrancar. La primera vez, cargue los datos iniciales desde la planilla
+original, que no va en la imagen ni en el repositorio:
 
 ```bash
-ssh root@IP_DEL_VPS "cd /opt/nexustrack && docker compose -f docker/compose.vps.yml --env-file .env.vps exec api npx prisma db seed"
+scp NexusTrack.xlsx root@IP_DEL_VPS:/tmp/
+ssh root@IP_DEL_VPS "cd /opt/nexustrack && docker compose -f docker/compose.vps.yml --env-file .env.vps cp /tmp/NexusTrack.xlsx api:/tmp/ && docker compose -f docker/compose.vps.yml --env-file .env.vps exec -e SEED_XLSX=/tmp/NexusTrack.xlsx api npx prisma db seed && rm /tmp/NexusTrack.xlsx"
 ```
 
 ## 4. Publicar la API en el Caddy existente
