@@ -76,10 +76,15 @@ export class OrdenRetiro {
       .reduce((s, v) => s + v.total, 0),
   );
 
+  /** El administrador puede corregir además una orden cerrada. */
+  readonly corrigiendo = computed(
+    () => this.dto()?.estado === 'CERRADA' && this.sesion.puede('editarCerrados'),
+  );
   readonly editable = computed(() => {
     const d = this.dto();
     return (
-      this.sesion.puede('editarOperacion') && (!d || ESTADOS_RETIRO_ACTIVOS.includes(d.estado))
+      this.sesion.puede('editarOperacion') &&
+      (!d || ESTADOS_RETIRO_ACTIVOS.includes(d.estado) || this.corrigiendo())
     );
   });
   readonly activa = computed(
@@ -359,6 +364,19 @@ export class OrdenRetiro {
       this.guardando.set(false);
     }
   }
+
+  /** Solo administradores (ver BarraDocumento). */
+  readonly eliminarDocumento = async (): Promise<void> => {
+    const d = this.dto();
+    if (!d) return;
+    await this.api.eliminar(`ordenes-retiro/${d.id}`);
+    this.mensajes.add({
+      severity: 'success',
+      summary: 'Orden de retiro eliminada',
+      detail: `N° ${String(d.numero).padStart(6, '0')}`,
+    });
+    await this.router.navigate(['/operacion/ordenes-retiro'], { replaceUrl: true });
+  };
 
   async anular(motivo: string): Promise<void> {
     const d = this.dto();

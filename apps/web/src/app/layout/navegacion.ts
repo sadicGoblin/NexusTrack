@@ -30,6 +30,11 @@ export const MENU: GrupoMenu[] = [
         ruta: '/operacion/vales-combustible',
       },
       { etiqueta: 'Rendiciones', icono: 'pi pi-receipt', ruta: '/operacion/rendiciones' },
+      {
+        etiqueta: 'Cuentas de conductores',
+        icono: 'pi pi-book',
+        ruta: '/operacion/cuentas-conductores',
+      },
     ],
   },
   {

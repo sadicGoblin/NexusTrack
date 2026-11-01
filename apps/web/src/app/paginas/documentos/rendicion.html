@@ -18,6 +18,8 @@
     volver="/operacion/rendiciones"
     [editable]="editable() && !!form()"
     [anulable]="dto()?.estado === 'EMITIDO'"
+    [eliminable]="!!dto()"
+    [eliminar]="eliminarDocumento"
     [guardando]="guardando()"
     (guardar)="guardar()"
     (anular)="anular($event)"
@@ -100,7 +102,7 @@
                       [botonHoy]="false"
                     />
                   </td>
-                  <td>
+                  <td class="num">
                     <p-inputnumber
                       formControlName="desayuno"
                       mode="currency"
@@ -111,7 +113,7 @@
                       ariaLabel="Desayuno"
                     />
                   </td>
-                  <td>
+                  <td class="num">
                     <p-inputnumber
                       formControlName="almuerzo"
                       mode="currency"
@@ -122,7 +124,7 @@
                       ariaLabel="Almuerzo"
                     />
                   </td>
-                  <td>
+                  <td class="num">
                     <p-inputnumber
                       formControlName="comida"
                       mode="currency"
@@ -240,7 +242,7 @@
                       [botonHoy]="false"
                     />
                   </td>
-                  <td>
+                  <td class="num">
                     <p-inputnumber
                       formControlName="monto"
                       mode="currency"
@@ -324,6 +326,17 @@
         </div>
       </div>
     </section>
+
+    @if (resumen(); as r) {
+      @if (dto()?.estado !== 'ANULADO') {
+        <nt-cuenta-conductor
+          [conductorId]="r.conductorId"
+          [ordenRetiroId]="r.id"
+          [totalRendicion]="totales().totalGeneral"
+          [recargar]="dto()"
+        />
+      }
+    }
   }
 }
 

@@ -79,4 +79,14 @@ export const rutasDocumentos: Routes = [
     title: 'Rendición · NexusTrack',
     loadComponent: () => import('./rendicion').then((m) => m.Rendicion),
   },
+  {
+    path: 'cuentas-conductores',
+    title: 'Cuentas de conductores · NexusTrack',
+    loadComponent: () => import('./cuentas').then((m) => m.CuentasConductores),
+  },
+  {
+    path: 'cuentas-conductores/:id',
+    title: 'Cuenta del conductor · NexusTrack',
+    loadComponent: () => import('./cuentas').then((m) => m.CuentaDeConductor),
+  },
 ];

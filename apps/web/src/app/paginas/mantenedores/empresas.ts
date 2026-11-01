@@ -16,6 +16,7 @@ export class Empresas {
     singular: 'empresa',
     femenino: true,
     recurso: 'empresas',
+    eliminable: true,
     permiso: 'editarMantenedores',
     claveEstado: 'empresas',
     conjuntos: ['catalogos'],

@@ -255,8 +255,7 @@ describe('Documentos operativos: flujo completo', () => {
       (await c.get(`/ordenes-retiro/${or.id}`).expect(200)).body.estado,
     ).toBe('CERRADA');
 
-    // Documentos cerrados no se editan; la anulación respeta el orden hijo → padre.
-    await c.put(`/ordenes-retiro/${or.id}`, { ...or }).expect(409);
+    // La anulación respeta el orden hijo → padre.
     expect(
       (await c.post(`/ordenes-carga/${oc.id}/anular`, { motivo: 'prueba' }))
         .body.message,
@@ -436,6 +435,181 @@ describe('Documentos operativos: flujo completo', () => {
       retirosSinCarga: 8,
       cargasPorRendir: 1,
       tarifasVencidas: 4,
+    });
+  });
+
+  describe('cuenta del conductor, corrección y eliminación', () => {
+    let operaciones: Cliente;
+    const vale = (ordenRetiroId: number, monto: number) =>
+      c
+        .post('/vales-dinero', {
+          ordenRetiroId,
+          fechaEntrega: '2026-09-10',
+          sitioEntregaId: id('SITIO_ENTREGA', 'CURICO'),
+          monto,
+          formaPagoId: id('FORMA_PAGO', 'EFECTIVO'),
+        })
+        .expect(201)
+        .then((r) => r.body);
+
+    beforeAll(async () => {
+      await c
+        .post('/usuarios', {
+          email: 'operaciones.docs@test.cl',
+          nombre: 'Operaciones',
+          rol: 'OPERACIONES',
+          password: 'Operaciones123',
+        })
+        .expect(201);
+      operaciones = (
+        await iniciarSesion(app, 'operaciones.docs@test.cl', 'Operaciones123')
+      ).cliente;
+    });
+
+    it('toma el tramo de la primera guía si la cabecera queda vacía', async () => {
+      const or = await nuevaOrdenRetiro('2026-09-10');
+      const oc = (
+        await c
+          .post('/ordenes-carga', {
+            ordenRetiroId: or.id,
+            fechaCarga: '2026-09-10',
+            guias: [
+              guia(rutas.underslung, 'UNDERSLUNG'),
+              guia(rutas.contenedor, 'VIAJE'),
+            ],
+          })
+          .expect(201)
+      ).body;
+      expect(oc).toMatchObject({
+        tramoId: rutas.underslung,
+        tramo: 'TALCA - VALPARAISO - UNDERSLUNG',
+      });
+      await c.delete(`/ordenes-carga/${oc.id}`).expect(204);
+      await c.delete(`/ordenes-retiro/${or.id}`).expect(204);
+    });
+
+    it('lleva el saldo, deja corregir al administrador y elimina en orden', async () => {
+      // Flete rendido: anticipos 60.000 + 40.000, gastos 120.000 → 20.000 a favor del conductor.
+      const or = await nuevaOrdenRetiro('2026-09-10');
+      const v1 = await vale(or.id, 60000);
+      const v2 = await vale(or.id, 40000);
+      const oc = (
+        await c
+          .post('/ordenes-carga', {
+            ordenRetiroId: or.id,
+            fechaCarga: '2026-09-10',
+            guias: [guia(rutas.contenedor, 'VIAJE')],
+          })
+          .expect(201)
+      ).body;
+      const rd = (
+        await c
+          .post('/rendiciones', {
+            ordenCargaId: oc.id,
+            fecha: '2026-09-12',
+            peajes: 120000,
+            viaticos: [],
+            gastos: [],
+          })
+          .expect(201)
+      ).body;
+      // Otro flete con anticipo y sin rendir.
+      const otra = await nuevaOrdenRetiro('2026-09-11');
+      const v3 = await vale(otra.id, 30000);
+
+      const cuenta = (
+        await c.get(`/cuentas-conductores/${base.conductor}`).expect(200)
+      ).body;
+      const flete = cuenta.fletes.find(
+        (f: { ordenRetiroId: number }) => f.ordenRetiroId === or.id,
+      );
+      expect(flete).toMatchObject({
+        anticipos: 100000,
+        rendido: 120000,
+        resultado: 20000,
+        rendicionNumero: rd.numero,
+      });
+      expect(cuenta.saldo).toBe(
+        cuenta.fletes.reduce(
+          (s: number, f: { resultado: number | null }) =>
+            s + (f.resultado ?? 0),
+          0,
+        ),
+      );
+      expect(cuenta.porRendir).toBeGreaterThanOrEqual(30000);
+      const lista = (await c.get('/cuentas-conductores').expect(200)).body;
+      expect(
+        lista.find(
+          (x: { conductorId: number }) => x.conductorId === base.conductor,
+        ),
+      ).toMatchObject({ saldo: cuenta.saldo, porRendir: cuenta.porRendir });
+
+      // Documentos cerrados: solo el administrador los corrige.
+      const entradaCarga = {
+        ordenRetiroId: or.id,
+        tramoId: rutas.contenedor,
+        fechaCarga: '2026-09-10',
+        horaCarga: '07:30',
+        guias: [guia(rutas.contenedor, 'VIAJE')],
+      };
+      await operaciones
+        .put(`/ordenes-carga/${oc.id}`, entradaCarga)
+        .expect(409);
+      expect(
+        (await c.put(`/ordenes-carga/${oc.id}`, entradaCarga).expect(200)).body,
+      ).toMatchObject({ estado: 'RENDIDA', horaCarga: '07:30' });
+      const cerrada = (await c.get(`/ordenes-retiro/${or.id}`).expect(200))
+        .body;
+      expect(cerrada.estado).toBe('CERRADA');
+      await operaciones.put(`/ordenes-retiro/${or.id}`, cerrada).expect(409);
+      await c
+        .put(`/ordenes-retiro/${or.id}`, { ...cerrada, mtb: 'MTB-1' })
+        .expect(200);
+
+      // Solo el administrador elimina, y siempre del hijo al padre.
+      await operaciones.delete(`/vales-dinero/${v1.id}`).expect(403);
+      expect(
+        (await c.delete(`/ordenes-retiro/${or.id}`).expect(409)).body.message,
+      ).toMatch(/elimine primero la orden de carga N° \d+, el vale de dinero/);
+      expect(
+        (await c.delete(`/ordenes-carga/${oc.id}`).expect(409)).body.message,
+      ).toMatch(/rendición N° \d+: elimínela primero/);
+      await c.delete(`/rendiciones/${rd.id}`).expect(204);
+      expect(
+        (await c.get(`/ordenes-carga/${oc.id}`).expect(200)).body.estado,
+      ).toBe('ABIERTA');
+      expect(
+        (await c.get(`/ordenes-retiro/${or.id}`).expect(200)).body.estado,
+      ).toBe('CON_CARGA');
+      await c.delete(`/ordenes-carga/${oc.id}`).expect(204);
+      expect(
+        (await c.get(`/ordenes-retiro/${or.id}`).expect(200)).body.estado,
+      ).toBe('ABIERTA');
+      for (const v of [v1, v2, v3])
+        await c.delete(`/vales-dinero/${v.id}`).expect(204);
+      await c.delete(`/ordenes-retiro/${or.id}`).expect(204);
+      await c.delete(`/ordenes-retiro/${otra.id}`).expect(204);
+      await c.get(`/ordenes-retiro/${or.id}`).expect(404);
+      await c.delete(`/ordenes-retiro/${or.id}`).expect(404);
+
+      // La auditoría conserva quién eliminó y cómo se reconocía el documento.
+      const historial = (
+        await c
+          .get(`/auditoria?entidad=OrdenCarga&entidadId=${oc.id}`)
+          .expect(200)
+      ).body;
+      expect(historial[0]).toMatchObject({
+        accion: 'ELIMINAR',
+        referencia: `N° ${String(oc.numero).padStart(6, '0')}`,
+        eliminado: true,
+        usuario: 'Administrador',
+      });
+      expect(historial[0].cambios.guias).toHaveLength(1);
+      expect(historial.map((h: { accion: string }) => h.accion)).toEqual([
+        'ELIMINAR',
+        'EDITAR',
+        'CREAR',
+      ]);
     });
   });
 });

@@ -6,3 +6,4 @@ export * from './fechas.js';
 export * from './montos.js';
 export * from './calculos.js';
 export type * from './contratos.js';
+export * from './cuenta.js';

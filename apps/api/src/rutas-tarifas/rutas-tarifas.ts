@@ -1,7 +1,9 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   Injectable,
   Module,
   Param,
@@ -19,7 +21,7 @@ import {
   type UsuarioSesion,
 } from '@nexustrack/shared';
 import { RequierePermiso, UsuarioActual } from '../comun/decoradores.js';
-import { invalido, noEncontrado } from '../comun/errores.js';
+import { invalido, enUso, noEncontrado } from '../comun/errores.js';
 import { aFecha, aIso } from '../comun/fechas.js';
 import {
   Booleano,
@@ -268,6 +270,28 @@ export class RutasTarifasService {
       return aRutaDto(r);
     });
   }
+  /** Solo si nada lo usa; si no, el registro se desactiva. */
+  async eliminar(id: number, u: UsuarioSesion): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const r = await tx.rutaTarifa.findUnique({ where: { id } });
+      if (!r) throw noEncontrado('La ruta tarifa');
+      await tx.rutaTarifa
+        .delete({ where: { id } })
+        .catch((e: unknown) =>
+          enUso(
+            e,
+            'No se puede eliminar la tarifa: hay órdenes de carga que la usan. Si ya no rige, desactívela.',
+          ),
+        );
+      await this.auditoria.registrar(tx, {
+        entidad: 'RutaTarifa',
+        entidadId: id,
+        accion: 'ELIMINAR',
+        usuarioId: u.id,
+        cambios: this.auditoria.instantanea(r),
+      });
+    });
+  }
 }
 
 @ApiTags('Mantenedores')
@@ -297,6 +321,16 @@ export class RutasTarifasController {
     @UsuarioActual() u: UsuarioSesion,
   ) {
     return this.servicio.actualizar(id, dto, u);
+  }
+
+  @RequierePermiso('eliminar')
+  @Delete(':id')
+  @HttpCode(204)
+  eliminar(
+    @Param('id', ParseIntPipe) id: number,
+    @UsuarioActual() u: UsuarioSesion,
+  ) {
+    return this.servicio.eliminar(id, u);
   }
 }
 

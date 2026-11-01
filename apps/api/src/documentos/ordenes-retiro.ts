@@ -1,7 +1,9 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   Injectable,
   Module,
   Param,
@@ -17,11 +19,12 @@ import {
   type FormatoExportacion,
   type OrdenRetiroDto,
   type OrdenRetiroInput,
+  tienePermiso,
   type UsuarioSesion,
 } from '@nexustrack/shared';
 import { RequierePermiso, UsuarioActual } from '../comun/decoradores.js';
 import { AnularDto, FiltroFechasDto } from '../comun/dto.js';
-import { conflicto, noEncontrado } from '../comun/errores.js';
+import { conflicto, enumerar, noEncontrado } from '../comun/errores.js';
 import { aFecha, rangoFechas } from '../comun/fechas.js';
 import {
   Booleano,
@@ -263,7 +266,9 @@ export class OrdenesRetiroService {
         include: { ordenesCarga: { where: { estado: { not: 'ANULADA' } } } },
       });
       if (!antes) throw noEncontrado('La orden de retiro');
-      if (!EDITABLES.includes(antes.estado)) {
+      const corrige =
+        antes.estado === 'CERRADA' && tienePermiso(u.rol, 'editarCerrados');
+      if (!EDITABLES.includes(antes.estado) && !corrige) {
         throw conflicto(
           `La orden de retiro está ${etiquetaEstado(antes.estado).toLowerCase()} y no se puede modificar.`,
         );
@@ -287,6 +292,40 @@ export class OrdenesRetiroService {
         cambios: this.auditoria.diferencias(antes, o),
       });
       return aOrdenRetiroDto(o);
+    });
+  }
+
+  /** Solo sin documentos asociados, aunque estén anulados: se eliminan primero. */
+  async eliminar(id: number, u: UsuarioSesion): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const o = await tx.ordenRetiro.findUnique({
+        where: { id },
+        include: {
+          ordenesCarga: { select: { numero: true } },
+          valesDinero: { select: { numero: true } },
+          valesCombustible: { select: { numero: true } },
+        },
+      });
+      if (!o) throw noEncontrado('La orden de retiro');
+      const asociados = [
+        ...o.ordenesCarga.map((d) => `la orden de carga N° ${d.numero}`),
+        ...o.valesDinero.map((d) => `el vale de dinero N° ${d.numero}`),
+        ...o.valesCombustible.map(
+          (d) => `el vale de combustible N° ${d.numero}`,
+        ),
+      ];
+      if (asociados.length)
+        throw conflicto(
+          `La orden tiene documentos asociados: elimine primero ${enumerar(asociados)}.`,
+        );
+      await tx.ordenRetiro.delete({ where: { id } });
+      await this.auditoria.registrar(tx, {
+        entidad: 'OrdenRetiro',
+        entidadId: id,
+        accion: 'ELIMINAR',
+        usuarioId: u.id,
+        cambios: this.auditoria.instantanea(o),
+      });
     });
   }
 
@@ -471,6 +510,16 @@ export class OrdenesRetiroController {
     @UsuarioActual() u: UsuarioSesion,
   ) {
     return this.servicio.anular(id, dto.motivo, u);
+  }
+
+  @RequierePermiso('eliminar')
+  @Delete(':id')
+  @HttpCode(204)
+  eliminar(
+    @Param('id', ParseIntPipe) id: number,
+    @UsuarioActual() u: UsuarioSesion,
+  ) {
+    return this.servicio.eliminar(id, u);
   }
 }
 

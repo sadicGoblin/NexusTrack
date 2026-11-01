@@ -38,6 +38,19 @@ export type FilaRetiro = Prisma.OrdenRetiroGetPayload<{
   include: typeof includeRetiro;
 }>;
 
+/**
+ * Tramo principal de una orden de carga: el de la cabecera o, si quedó vacío, el de sus guías
+ * (órdenes emitidas antes de que la cabecera se completara sola).
+ */
+export function tramoDeCarga(
+  cabecera: string | null | undefined,
+  guias: { tramoTexto: string }[],
+): string | null {
+  if (cabecera) return cabecera;
+  const distintos = [...new Set(guias.map((g) => g.tramoTexto))];
+  return distintos.length ? distintos.join(' / ') : null;
+}
+
 export function aResumenRetiro(o: FilaRetiro): ResumenRetiroDto {
   return {
     id: o.id,
@@ -50,6 +63,7 @@ export function aResumenRetiro(o: FilaRetiro): ResumenRetiroDto {
     destino: o.destino.valor,
     trazabilidad: o.trazabilidad.valor,
     conductor: o.conductor.nombre,
+    conductorId: o.conductorId,
     conductorRut: o.conductor.rut,
     empresa: o.empresa.razonSocial,
     camion: o.camion.patente,

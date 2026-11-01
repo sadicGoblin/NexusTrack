@@ -7,6 +7,8 @@
   volver="/operacion/ordenes-retiro"
   [editable]="editable()"
   [anulable]="dto()?.estado === 'ABIERTA'"
+  [eliminable]="!!dto()"
+  [eliminar]="eliminarDocumento"
   [guardando]="guardando()"
   (guardar)="guardar()"
   (anular)="anular($event)"
@@ -15,6 +17,11 @@
 @if (dto()?.estado === 'ANULADA') {
   <p-message severity="error" class="aviso-anulado"
     >Orden anulada. Motivo: {{ dto()?.motivoAnulacion }}</p-message
+  >
+} @else if (corrigiendo()) {
+  <p-message severity="warn" class="aviso-anulado"
+    >Flete cerrado: la orden de carga ya fue rendida. Como administrador puede corregirla; los
+    cambios quedan registrados en Auditoría.</p-message
   >
 } @else if (dto()?.estado === 'CERRADA') {
   <p-message severity="success" class="aviso-anulado"

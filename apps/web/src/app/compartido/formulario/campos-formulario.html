@@ -132,12 +132,10 @@
           />
         }
         @case ('hora') {
-          <input
-            pInputText
-            type="time"
-            [id]="'c-' + c.campo"
+          <nt-hora
+            [inputId]="'c-' + c.campo"
             [formControlName]="c.campo"
-            [readonly]="soloLectura()"
+            [soloLectura]="soloLectura()"
           />
         }
         @case ('calculado') {

@@ -18,6 +18,8 @@
     volver="/operacion/ordenes-carga"
     [editable]="editable() && !!form()"
     [anulable]="dto()?.estado === 'ABIERTA'"
+    [eliminable]="!!dto()"
+    [eliminar]="eliminarDocumento"
     [guardando]="guardando()"
     (guardar)="guardar()"
     (anular)="anular($event)"
@@ -47,6 +49,11 @@
   @if (dto()?.estado === 'ANULADA') {
     <p-message severity="error" class="aviso"
       >Orden de carga anulada. Motivo: {{ dto()?.motivoAnulacion }}</p-message
+    >
+  } @else if (corrigiendo()) {
+    <p-message severity="warn" class="aviso"
+      >Orden ya rendida. Como administrador puede corregirla; los cambios quedan registrados en
+      Auditoría.</p-message
     >
   }
 
@@ -151,7 +158,7 @@
                       class="w-sel"
                     />
                   </td>
-                  <td>
+                  <td class="num">
                     <p-inputnumber
                       formControlName="cantidadEspecie"
                       locale="es-CL"
@@ -172,7 +179,7 @@
                   <td>
                     <p-select
                       formControlName="tramoId"
-                      (onChange)="proponerValor(g, $event.value)"
+                      (onChange)="tramoDeGuia(g, $event.value)"
                       [options]="opcionesTramo()"
                       optionLabel="label"
                       optionValue="value"
@@ -203,7 +210,7 @@
                       class="w-sel"
                     />
                   </td>
-                  <td>
+                  <td class="num">
                     <p-inputnumber
                       formControlName="cantidadTarifa"
                       locale="es-CL"
@@ -212,7 +219,7 @@
                       ariaLabel="Cantidad tarifa"
                     />
                   </td>
-                  <td>
+                  <td class="num">
                     <p-inputnumber
                       formControlName="valorUnitario"
                       mode="currency"

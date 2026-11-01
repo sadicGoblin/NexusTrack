@@ -15,6 +15,7 @@ export class Packings {
     descripcion: 'Plantas de carga de cada cliente.',
     singular: 'packing',
     recurso: 'packings',
+    eliminable: true,
     permiso: 'editarMantenedores',
     claveEstado: 'packings',
     conjuntos: ['clientes'],

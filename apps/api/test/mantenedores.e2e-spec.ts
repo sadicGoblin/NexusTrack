@@ -283,4 +283,32 @@ describe('Datos iniciales y mantenedores', () => {
       ).asignacion,
     ).toBeNull();
   });
+
+  it('elimina solo registros que nada usa y deja copia en auditoría', async () => {
+    const cliente = (await c.get('/clientes').expect(200)).body[0];
+    const p = (
+      await c
+        .post('/packings', { nombre: 'planta temporal', clienteId: cliente.id })
+        .expect(201)
+    ).body;
+    await c.delete(`/packings/${p.id}`).expect(204);
+    await c.delete(`/packings/${p.id}`).expect(404);
+    const historial = (
+      await c.get(`/auditoria?entidad=Packing&entidadId=${p.id}`).expect(200)
+    ).body;
+    expect(historial[0]).toMatchObject({
+      accion: 'ELIMINAR',
+      referencia: 'PLANTA TEMPORAL',
+      eliminado: true,
+    });
+
+    // Una empresa con móviles y conductores no se puede eliminar: se desactiva.
+    const empresas = (await c.get('/empresas').expect(200)).body;
+    const bb = empresas.find(
+      (e: { razonSocial: string }) =>
+        e.razonSocial === 'TRANSPORTES B&B LIMITADA',
+    );
+    const r = await c.delete(`/empresas/${bb.id}`).expect(409);
+    expect(r.body.message).toMatch(/desactívela/);
+  });
 });

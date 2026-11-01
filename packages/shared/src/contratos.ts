@@ -65,6 +65,10 @@ export interface AuditoriaDto {
   id: number;
   entidad: string;
   entidadId: number;
+  /** Cómo se reconoce el registro: "N° 000012" en documentos, patente, nombre, etc. */
+  referencia: Nullable<string>;
+  /** El registro ya no existe porque se eliminó. */
+  eliminado: boolean;
   accion: string;
   usuario: Nullable<string>;
   fecha: string;
@@ -418,6 +422,7 @@ export interface ResumenRetiroDto {
   destino: string;
   trazabilidad: string;
   conductor: string;
+  conductorId: number;
   conductorRut: string;
   empresa: string;
   camion: string;

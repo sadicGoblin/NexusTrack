@@ -1,7 +1,9 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   Injectable,
   Module,
   Param,
@@ -18,7 +20,7 @@ import {
   type UsuarioSesion,
 } from '@nexustrack/shared';
 import { RequierePermiso, UsuarioActual } from '../comun/decoradores.js';
-import { exigirRutValido, noEncontrado } from '../comun/errores.js';
+import { exigirRutValido, enUso, noEncontrado } from '../comun/errores.js';
 import { aFecha, aIso } from '../comun/fechas.js';
 import {
   Booleano,
@@ -181,6 +183,28 @@ export class ConductoresService {
       return aDto(c);
     });
   }
+  /** Solo si nada lo usa; si no, el registro se desactiva. */
+  async eliminar(id: number, u: UsuarioSesion): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const r = await tx.conductor.findUnique({ where: { id } });
+      if (!r) throw noEncontrado('El conductor');
+      await tx.conductor
+        .delete({ where: { id } })
+        .catch((e: unknown) =>
+          enUso(
+            e,
+            'No se puede eliminar el conductor: tiene asignaciones o documentos asociados. Si ya no trabaja, desactívelo.',
+          ),
+        );
+      await this.auditoria.registrar(tx, {
+        entidad: 'Conductor',
+        entidadId: id,
+        accion: 'ELIMINAR',
+        usuarioId: u.id,
+        cambios: this.auditoria.instantanea(r),
+      });
+    });
+  }
 }
 
 @ApiTags('Mantenedores')
@@ -210,6 +234,16 @@ export class ConductoresController {
     @UsuarioActual() u: UsuarioSesion,
   ) {
     return this.servicio.actualizar(id, dto, u);
+  }
+
+  @RequierePermiso('eliminar')
+  @Delete(':id')
+  @HttpCode(204)
+  eliminar(
+    @Param('id', ParseIntPipe) id: number,
+    @UsuarioActual() u: UsuarioSesion,
+  ) {
+    return this.servicio.eliminar(id, u);
   }
 }
 

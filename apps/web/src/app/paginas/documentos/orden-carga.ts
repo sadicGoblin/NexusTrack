@@ -95,8 +95,14 @@ export class OrdenCarga {
 
   readonly columnasRetiros = COLUMNAS_RETIROS;
   readonly creando = computed(() => !this.id());
+  /** El administrador puede corregir además una orden ya rendida. */
+  readonly corrigiendo = computed(
+    () => this.dto()?.estado === 'RENDIDA' && this.sesion.puede('editarCerrados'),
+  );
   readonly editable = computed(
-    () => this.sesion.puede('editarOperacion') && (!this.dto() || this.dto()!.estado === 'ABIERTA'),
+    () =>
+      this.sesion.puede('editarOperacion') &&
+      (!this.dto() || this.dto()!.estado === 'ABIERTA' || this.corrigiendo()),
   );
   readonly totalNeto = computed(() =>
     this.valoresGuias().reduce(
@@ -318,6 +324,13 @@ export class OrdenCarga {
     this.proponerValor(g, tramoId);
   }
 
+  /** Tramo elegido en una guía: propone su valor y, si la cabecera no tiene tramo, lo toma. */
+  tramoDeGuia(g: FormGuia, tramoId: number | null): void {
+    this.proponerValor(g, tramoId);
+    const cabecera = this.form()?.get('tramoId');
+    if (cabecera && !cabecera.value && tramoId) cabecera.setValue(tramoId);
+  }
+
   proponerValor(g: FormGuia, tramoId: number | null): void {
     const ruta = this.rutas().find((r) => r.id === tramoId);
     if (ruta) g.controls.valorUnitario.setValue(ruta.valor);
@@ -369,6 +382,19 @@ export class OrdenCarga {
       this.guardando.set(false);
     }
   }
+
+  /** Solo administradores (ver BarraDocumento). */
+  readonly eliminarDocumento = async (): Promise<void> => {
+    const d = this.dto();
+    if (!d) return;
+    await this.api.eliminar(`ordenes-carga/${d.id}`);
+    this.mensajes.add({
+      severity: 'success',
+      summary: 'Orden de carga eliminada',
+      detail: `N° ${String(d.numero).padStart(6, '0')}`,
+    });
+    await this.router.navigate(['/operacion/ordenes-carga'], { replaceUrl: true });
+  };
 
   async anular(motivo: string): Promise<void> {
     const d = this.dto();

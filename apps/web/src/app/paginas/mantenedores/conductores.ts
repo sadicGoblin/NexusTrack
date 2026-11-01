@@ -15,6 +15,7 @@ export class Conductores {
     descripcion: 'Conductores propios (trabajadores) y de empresas terceras.',
     singular: 'conductor',
     recurso: 'conductores',
+    eliminable: true,
     permiso: 'editarMantenedores',
     claveEstado: 'conductores',
     conjuntos: ['empresas'],

@@ -13,6 +13,7 @@ import { ApiService } from '../../nucleo/api.service';
 import { DatosMaestrosService } from '../../nucleo/datos-maestros.service';
 import { SesionService } from '../../nucleo/sesion.service';
 import { BarraDocumento } from '../../compartido/documentos/barra-documento';
+import { CuentaConductor } from '../../compartido/documentos/cuenta-conductor';
 import { ResumenRetiro } from '../../compartido/documentos/resumen-retiro';
 import { SelectorPadre } from '../../compartido/documentos/selector-padre';
 import { CamposFormulario } from '../../compartido/formulario/campos-formulario';
@@ -25,7 +26,14 @@ import { aResumen, COLUMNAS_RETIROS } from './comun';
 
 @Component({
   selector: 'nt-vale-dinero',
-  imports: [BarraDocumento, ResumenRetiro, SelectorPadre, CamposFormulario, Message],
+  imports: [
+    BarraDocumento,
+    CuentaConductor,
+    ResumenRetiro,
+    SelectorPadre,
+    CamposFormulario,
+    Message,
+  ],
   template: `
     @if (creando() && !retiro()) {
       <nt-barra-documento titulo="Nuevo vale de dinero" volver="/operacion/vales-dinero" />
@@ -47,6 +55,8 @@ import { aResumen, COLUMNAS_RETIROS } from './comun';
         volver="/operacion/vales-dinero"
         [editable]="editable() && !!form()"
         [anulable]="dto()?.estado === 'EMITIDO'"
+        [eliminable]="!!dto()"
+        [eliminar]="eliminarDocumento"
         [guardando]="guardando()"
         (guardar)="guardar()"
         (anular)="anular($event)"
@@ -64,6 +74,14 @@ import { aResumen, COLUMNAS_RETIROS } from './comun';
           <div class="nt-tarjeta-titulo"><h2>Anticipo</h2></div>
           <nt-campos [form]="f" [campos]="campos" [soloLectura]="!editable()" />
         </section>
+      }
+      @if (resumen(); as r) {
+        <nt-cuenta-conductor
+          modo="anticipo"
+          [conductorId]="r.conductorId"
+          [ordenRetiroId]="r.id"
+          [recargar]="dto()"
+        />
       }
     }
   `,
@@ -195,6 +213,19 @@ export class ValeDinero {
       this.guardando.set(false);
     }
   }
+
+  /** Solo administradores (ver BarraDocumento). */
+  readonly eliminarDocumento = async (): Promise<void> => {
+    const d = this.dto();
+    if (!d) return;
+    await this.api.eliminar(`vales-dinero/${d.id}`);
+    this.mensajes.add({
+      severity: 'success',
+      summary: 'Vale de dinero eliminado',
+      detail: `N° ${String(d.numero).padStart(6, '0')}`,
+    });
+    await this.router.navigate(['/operacion/vales-dinero'], { replaceUrl: true });
+  };
 
   async anular(motivo: string): Promise<void> {
     const d = this.dto();

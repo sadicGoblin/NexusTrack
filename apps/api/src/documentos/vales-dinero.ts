@@ -1,7 +1,9 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   Injectable,
   Module,
   Param,
@@ -214,6 +216,21 @@ export class ValesDineroService {
     });
   }
 
+  async eliminar(id: number, u: UsuarioSesion): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const v = await tx.valeDinero.findUnique({ where: { id } });
+      if (!v) throw noEncontrado('El vale de dinero');
+      await tx.valeDinero.delete({ where: { id } });
+      await this.auditoria.registrar(tx, {
+        entidad: 'ValeDinero',
+        entidadId: id,
+        accion: 'ELIMINAR',
+        usuarioId: u.id,
+        cambios: this.auditoria.instantanea(v),
+      });
+    });
+  }
+
   async anular(
     id: number,
     motivo: string,
@@ -336,6 +353,16 @@ export class ValesDineroController {
     @UsuarioActual() u: UsuarioSesion,
   ) {
     return this.servicio.anular(id, dto.motivo, u);
+  }
+
+  @RequierePermiso('eliminar')
+  @Delete(':id')
+  @HttpCode(204)
+  eliminar(
+    @Param('id', ParseIntPipe) id: number,
+    @UsuarioActual() u: UsuarioSesion,
+  ) {
+    return this.servicio.eliminar(id, u);
   }
 }
 

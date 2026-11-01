@@ -1,7 +1,9 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   Injectable,
   Module,
   Param,
@@ -17,7 +19,7 @@ import type {
   UsuarioSesion,
 } from '@nexustrack/shared';
 import { RequierePermiso, UsuarioActual } from '../comun/decoradores.js';
-import { noEncontrado } from '../comun/errores.js';
+import { enUso, noEncontrado } from '../comun/errores.js';
 import { Booleano, Id, Texto } from '../comun/validacion.js';
 import { AuditoriaService } from '../comun/auditoria.service.js';
 import { ReferenciasService } from '../comun/referencias.service.js';
@@ -135,6 +137,28 @@ export class PackingsService {
       return aDto(p);
     });
   }
+  /** Solo si nada lo usa; si no, el registro se desactiva. */
+  async eliminar(id: number, u: UsuarioSesion): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const r = await tx.packing.findUnique({ where: { id } });
+      if (!r) throw noEncontrado('El packing');
+      await tx.packing
+        .delete({ where: { id } })
+        .catch((e: unknown) =>
+          enUso(
+            e,
+            'No se puede eliminar el packing: hay documentos que lo usan. Si ya no se usa, desactívelo.',
+          ),
+        );
+      await this.auditoria.registrar(tx, {
+        entidad: 'Packing',
+        entidadId: id,
+        accion: 'ELIMINAR',
+        usuarioId: u.id,
+        cambios: this.auditoria.instantanea(r),
+      });
+    });
+  }
 }
 
 @ApiTags('Mantenedores')
@@ -164,6 +188,16 @@ export class PackingsController {
     @UsuarioActual() u: UsuarioSesion,
   ) {
     return this.servicio.actualizar(id, dto, u);
+  }
+
+  @RequierePermiso('eliminar')
+  @Delete(':id')
+  @HttpCode(204)
+  eliminar(
+    @Param('id', ParseIntPipe) id: number,
+    @UsuarioActual() u: UsuarioSesion,
+  ) {
+    return this.servicio.eliminar(id, u);
   }
 }
 

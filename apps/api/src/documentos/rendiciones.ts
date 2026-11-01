@@ -1,7 +1,9 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   Injectable,
   Module,
   Param,
@@ -54,6 +56,7 @@ import {
   etiquetaEstado,
   includeRetiro,
   seccionRetiro,
+  tramoDeCarga,
 } from './retiro.mapper.js';
 
 class ViaticoDtoIn implements ViaticoInput {
@@ -107,6 +110,7 @@ const include = {
   ordenCarga: {
     include: {
       tramo: true,
+      guias: { select: { tramoTexto: true }, orderBy: { linea: 'asc' } },
       packingCarga: true,
       ordenRetiro: { include: includeRetiro },
     },
@@ -127,7 +131,7 @@ function aDto(r: Fila): RendicionDto {
     estado: r.estado,
     ordenCargaId: r.ordenCargaId,
     ordenCargaNumero: oc.numero,
-    tramo: oc.tramo?.tramo ?? null,
+    tramo: tramoDeCarga(oc.tramo?.tramo, oc.guias),
     fechaCarga: aIso(oc.fechaCarga)!,
     horaCarga: oc.horaCarga,
     packingCarga: oc.packingCarga?.nombre ?? null,
@@ -376,6 +380,39 @@ export class RendicionesService {
     });
   }
 
+  /** Borra la rendición; como al anularla, la orden de carga vuelve a quedar abierta. */
+  async eliminar(id: number, u: UsuarioSesion): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const r = await tx.rendicion.findUnique({
+        where: { id },
+        include: { ordenCarga: true, viaticos: true, gastos: true },
+      });
+      if (!r) throw noEncontrado('La rendición');
+      if (r.estado === 'EMITIDO') {
+        await tx.ordenCarga.update({
+          where: { id: r.ordenCargaId },
+          data: { estado: 'ABIERTA', actualizadoPorId: u.id },
+        });
+        await tx.ordenRetiro.update({
+          where: { id: r.ordenCarga.ordenRetiroId },
+          data: { estado: 'CON_CARGA', actualizadoPorId: u.id },
+        });
+      }
+      await tx.rendicion.delete({ where: { id } });
+      await this.auditoria.registrar(tx, {
+        entidad: 'Rendicion',
+        entidadId: id,
+        accion: 'ELIMINAR',
+        usuarioId: u.id,
+        cambios: {
+          ...this.auditoria.instantanea(r),
+          viaticos: r.viaticos.map((v) => this.auditoria.instantanea(v)),
+          gastos: r.gastos.map((g) => this.auditoria.instantanea(g)),
+        },
+      });
+    });
+  }
+
   async anular(
     id: number,
     motivo: string,
@@ -600,6 +637,16 @@ export class RendicionesController {
     @UsuarioActual() u: UsuarioSesion,
   ) {
     return this.servicio.anular(id, dto.motivo, u);
+  }
+
+  @RequierePermiso('eliminar')
+  @Delete(':id')
+  @HttpCode(204)
+  eliminar(
+    @Param('id', ParseIntPipe) id: number,
+    @UsuarioActual() u: UsuarioSesion,
+  ) {
+    return this.servicio.eliminar(id, u);
   }
 }
 

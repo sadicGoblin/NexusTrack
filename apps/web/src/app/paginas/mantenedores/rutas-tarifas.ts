@@ -22,6 +22,7 @@ export class RutasTarifas {
     singular: 'tarifa',
     femenino: true,
     recurso: 'rutas-tarifas',
+    eliminable: true,
     permiso: 'editarTarifas',
     claveEstado: 'rutas-tarifas',
     conjuntos: ['catalogos', 'clientes'],

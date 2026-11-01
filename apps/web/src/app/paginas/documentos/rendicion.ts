@@ -23,6 +23,7 @@ import { dateAIso, isoADate } from '../../nucleo/fechas';
 import { CorrelativoPipe, FechaPipe, NumeroPipe, PesosPipe } from '../../nucleo/pipes';
 import { SesionService } from '../../nucleo/sesion.service';
 import { BarraDocumento } from '../../compartido/documentos/barra-documento';
+import { CuentaConductor } from '../../compartido/documentos/cuenta-conductor';
 import { Dato } from '../../compartido/documentos/dato';
 import { ResumenRetiro } from '../../compartido/documentos/resumen-retiro';
 import { SelectorPadre } from '../../compartido/documentos/selector-padre';
@@ -71,6 +72,7 @@ interface CabeceraCarga {
   selector: 'nt-rendicion',
   imports: [
     BarraDocumento,
+    CuentaConductor,
     ResumenRetiro,
     SelectorPadre,
     CamposFormulario,
@@ -354,6 +356,19 @@ export class Rendicion {
       this.guardando.set(false);
     }
   }
+
+  /** Solo administradores (ver BarraDocumento). */
+  readonly eliminarDocumento = async (): Promise<void> => {
+    const d = this.dto();
+    if (!d) return;
+    await this.api.eliminar(`rendiciones/${d.id}`);
+    this.mensajes.add({
+      severity: 'success',
+      summary: 'Rendición eliminada',
+      detail: `N° ${String(d.numero).padStart(6, '0')}`,
+    });
+    await this.router.navigate(['/operacion/rendiciones'], { replaceUrl: true });
+  };
 
   async anular(motivo: string): Promise<void> {
     const d = this.dto();

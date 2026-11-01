@@ -1,7 +1,9 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   Injectable,
   Module,
   Param,
@@ -17,7 +19,7 @@ import type {
   UsuarioSesion,
 } from '@nexustrack/shared';
 import { RequierePermiso, UsuarioActual } from '../comun/decoradores.js';
-import { exigirRutValido, noEncontrado } from '../comun/errores.js';
+import { exigirRutValido, enUso, noEncontrado } from '../comun/errores.js';
 import { Booleano, Correo, Rut, Texto } from '../comun/validacion.js';
 import { AuditoriaService } from '../comun/auditoria.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -128,6 +130,28 @@ export class ClientesService {
       return aClienteDto(c);
     });
   }
+  /** Solo si nada lo usa; si no, el registro se desactiva. */
+  async eliminar(id: number, u: UsuarioSesion): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const r = await tx.cliente.findUnique({ where: { id } });
+      if (!r) throw noEncontrado('El cliente');
+      await tx.cliente
+        .delete({ where: { id } })
+        .catch((e: unknown) =>
+          enUso(
+            e,
+            'No se puede eliminar el cliente: tiene packings, tarifas o documentos asociados. Si ya no se usa, desactívelo.',
+          ),
+        );
+      await this.auditoria.registrar(tx, {
+        entidad: 'Cliente',
+        entidadId: id,
+        accion: 'ELIMINAR',
+        usuarioId: u.id,
+        cambios: this.auditoria.instantanea(r),
+      });
+    });
+  }
 }
 
 @ApiTags('Mantenedores')
@@ -157,6 +181,16 @@ export class ClientesController {
     @UsuarioActual() u: UsuarioSesion,
   ) {
     return this.servicio.actualizar(id, dto, u);
+  }
+
+  @RequierePermiso('eliminar')
+  @Delete(':id')
+  @HttpCode(204)
+  eliminar(
+    @Param('id', ParseIntPipe) id: number,
+    @UsuarioActual() u: UsuarioSesion,
+  ) {
+    return this.servicio.eliminar(id, u);
   }
 }
 

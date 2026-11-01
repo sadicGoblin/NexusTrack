@@ -11,8 +11,13 @@ import {
   generarTramo,
   hoyIso,
   limpiarRut,
+  armarCuenta,
   rangoMes,
+  resumirCuenta,
+  saldoAntesDe,
+  sentidoSaldo,
   tienePermiso,
+  type FleteSinCalcular,
   totalNetoGuias,
 } from './index.js';
 
@@ -117,5 +122,72 @@ describe('permisos', () => {
     expect(tienePermiso('FINANZAS', 'editarOperacion')).toBe(false);
     expect(tienePermiso('LECTURA', 'ver')).toBe(true);
     expect(tienePermiso(null, 'ver')).toBe(false);
+    expect(tienePermiso('ADMIN', 'eliminar')).toBe(true);
+    expect(tienePermiso('OPERACIONES', 'eliminar')).toBe(false);
+    expect(tienePermiso('FINANZAS', 'editarCerrados')).toBe(false);
+  });
+});
+
+describe('cuenta del conductor', () => {
+  const flete = (
+    n: number,
+    anticipos: number[],
+    rendicion?: { numero: number; fecha: string; total: number },
+  ): FleteSinCalcular => ({
+    ordenRetiroId: n,
+    ordenRetiroNumero: n,
+    fechaRetiro: `2026-10-0${n}`,
+    cliente: 'COEXCA',
+    origen: 'LOS ANDES',
+    destino: 'SAN ANTONIO',
+    vales: anticipos.map((monto, i) => ({
+      id: n * 10 + i,
+      numero: n * 10 + i,
+      fecha: `2026-10-0${n}`,
+      monto,
+    })),
+    rendicionId: rendicion?.numero ?? null,
+    rendicionNumero: rendicion?.numero ?? null,
+    fechaRendicion: rendicion?.fecha ?? null,
+    rendido: rendicion?.total ?? null,
+  });
+
+  // Flete 1: anticipo 100.000, gastó 120.000 → +20.000 (a favor del conductor).
+  // Flete 2: anticipos 50.000 + 30.000, gastó 70.000 → −10.000; saldo +10.000.
+  // Flete 3: anticipo 60.000 sin rendir.
+  const fletes = armarCuenta([
+    flete(3, [60000]),
+    flete(2, [50000, 30000], { numero: 8, fecha: '2026-10-09', total: 70000 }),
+    flete(1, [100000], { numero: 5, fecha: '2026-10-04', total: 120000 }),
+  ]);
+
+  it('ordena los rendidos por fecha de rendición y acumula el saldo', () => {
+    expect(fletes.map((f) => [f.ordenRetiroNumero, f.anticipos, f.resultado, f.saldo])).toEqual([
+      [1, 100000, 20000, 20000],
+      [2, 80000, -10000, 10000],
+      [3, 60000, null, null],
+    ]);
+  });
+
+  it('resume saldo y anticipos por rendir', () => {
+    expect(resumirCuenta(fletes)).toEqual({
+      saldo: 10000,
+      porRendir: 60000,
+      fletesPorRendir: 1,
+      ultimoMovimiento: '2026-10-09',
+    });
+  });
+
+  it('da el saldo previo a cada flete', () => {
+    expect(saldoAntesDe(fletes, 1)).toBe(0);
+    expect(saldoAntesDe(fletes, 2)).toBe(20000);
+    // Un flete sin rendir ve el saldo actual.
+    expect(saldoAntesDe(fletes, 3)).toBe(10000);
+  });
+
+  it('describe el sentido del saldo', () => {
+    expect(sentidoSaldo(10000)).toBe('a favor del conductor');
+    expect(sentidoSaldo(-1)).toBe('en contra del conductor');
+    expect(sentidoSaldo(0)).toBe('sin saldo');
   });
 });

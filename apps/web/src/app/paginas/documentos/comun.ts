@@ -14,6 +14,7 @@ export function aResumen(o: OrdenRetiroDto): ResumenRetiroDto {
     destino: o.destino,
     trazabilidad: o.trazabilidad,
     conductor: o.conductor,
+    conductorId: o.conductorId,
     conductorRut: o.conductorRut,
     empresa: o.empresa,
     camion: o.camion,

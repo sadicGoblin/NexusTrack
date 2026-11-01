@@ -2,7 +2,8 @@ import { Injectable } from '@nestjs/common';
 import type { Prisma } from '../generated/prisma/client.js';
 import type { Tx } from '../prisma/prisma.service.js';
 
-export type AccionAuditoria = 'CREAR' | 'EDITAR' | 'ANULAR' | 'ASIGNAR';
+export type AccionAuditoria =
+  'CREAR' | 'EDITAR' | 'ANULAR' | 'ASIGNAR' | 'ELIMINAR';
 
 const IGNORAR = new Set([
   'creadoEn',

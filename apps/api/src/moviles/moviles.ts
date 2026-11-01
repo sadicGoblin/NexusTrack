@@ -1,7 +1,9 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   Injectable,
   Module,
   Param,
@@ -20,7 +22,7 @@ import {
   type UsuarioSesion,
 } from '@nexustrack/shared';
 import { RequierePermiso, UsuarioActual } from '../comun/decoradores.js';
-import { noEncontrado } from '../comun/errores.js';
+import { enUso, noEncontrado } from '../comun/errores.js';
 import { aFecha, aIso } from '../comun/fechas.js';
 import {
   Booleano,
@@ -211,6 +213,28 @@ export class MovilesService {
       return aMovilDto(m);
     });
   }
+  /** Solo si nada lo usa; si no, el registro se desactiva. */
+  async eliminar(id: number, u: UsuarioSesion): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const r = await tx.movil.findUnique({ where: { id } });
+      if (!r) throw noEncontrado('El móvil');
+      await tx.movil
+        .delete({ where: { id } })
+        .catch((e: unknown) =>
+          enUso(
+            e,
+            'No se puede eliminar el móvil: tiene asignaciones o documentos asociados. Si ya no se usa, desactívelo.',
+          ),
+        );
+      await this.auditoria.registrar(tx, {
+        entidad: 'Movil',
+        entidadId: id,
+        accion: 'ELIMINAR',
+        usuarioId: u.id,
+        cambios: this.auditoria.instantanea(r),
+      });
+    });
+  }
 }
 
 @ApiTags('Mantenedores')
@@ -240,6 +264,16 @@ export class MovilesController {
     @UsuarioActual() u: UsuarioSesion,
   ) {
     return this.servicio.actualizar(id, dto, u);
+  }
+
+  @RequierePermiso('eliminar')
+  @Delete(':id')
+  @HttpCode(204)
+  eliminar(
+    @Param('id', ParseIntPipe) id: number,
+    @UsuarioActual() u: UsuarioSesion,
+  ) {
+    return this.servicio.eliminar(id, u);
   }
 }
 

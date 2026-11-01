@@ -1,6 +1,6 @@
 import { Component, computed, inject, input, OnInit, signal } from '@angular/core';
 import { type FormGroup } from '@angular/forms';
-import { MessageService } from 'primeng/api';
+import { ConfirmationService, MessageService } from 'primeng/api';
 import { Button } from 'primeng/button';
 import { Dialog } from 'primeng/dialog';
 import type { Permiso } from '@nexustrack/shared';
@@ -30,10 +30,13 @@ export interface ConfigMantenedor {
   /** Reacciones entre campos: se llama cuando cambia cualquier valor del formulario. */
   alCambiar?: (form: FormGroup, editando: boolean, campo: string) => void;
   anchoDialogo?: string;
+  /** El administrador puede eliminar registros que nada usa (la API lo verifica). */
+  eliminable?: boolean;
 }
 
 /**
- * Página estándar de mantenedor: grilla con todos los registros y diálogo para crear o editar.
+ * Página estándar de mantenedor: grilla con todos los registros y diálogo para crear, editar o,
+ * si es administrador, eliminar.
  */
 @Component({
   selector: 'nt-mantenedor',
@@ -45,6 +48,7 @@ export class Mantenedor implements OnInit {
   private readonly maestros = inject(DatosMaestrosService);
   private readonly sesion = inject(SesionService);
   private readonly mensajes = inject(MessageService);
+  private readonly confirmacion = inject(ConfirmationService);
 
   readonly config = input.required<ConfigMantenedor>();
 
@@ -56,6 +60,9 @@ export class Mantenedor implements OnInit {
   readonly form = signal<FormGroup | null>(null);
 
   readonly puedeEditar = computed(() => this.sesion.puede(this.config().permiso));
+  readonly puedeEliminar = computed(
+    () => !!this.config().eliminable && !!this.editando() && this.sesion.puede('eliminar'),
+  );
   readonly tituloDialogo = computed(() => {
     const c = this.config();
     if (!this.editando()) return `${c.femenino ? 'Nueva' : 'Nuevo'} ${c.singular}`;
@@ -93,6 +100,34 @@ export class Mantenedor implements OnInit {
     this.editando.set(fila);
     this.form.set(form);
     this.dialogo.set(true);
+  }
+
+  eliminar(): void {
+    const c = this.config();
+    const fila = this.editando();
+    if (!fila) return;
+    const art = c.femenino ? 'la' : 'el';
+    this.confirmacion.confirm({
+      header: `Eliminar ${c.singular}`,
+      message: `¿Eliminar ${art} ${c.singular} de forma permanente? En Auditoría queda una copia con todos sus datos. Si tiene documentos o asignaciones no se podrá eliminar; en ese caso desactívelo.`,
+      icon: 'pi pi-exclamation-triangle',
+      acceptLabel: 'Eliminar',
+      rejectLabel: 'Cancelar',
+      acceptButtonStyleClass: 'p-button-danger',
+      accept: async () => {
+        await this.api.eliminar(`${c.recurso}/${fila['id']}`);
+        this.mensajes.add({
+          severity: 'success',
+          summary: 'Eliminado',
+          detail: `Se eliminó ${art} ${c.singular}.`,
+        });
+        this.dialogo.set(false);
+        await Promise.all([
+          this.cargar(),
+          c.invalidar ? this.maestros.invalidar(c.invalidar) : null,
+        ]);
+      },
+    });
   }
 
   async guardar(): Promise<void> {

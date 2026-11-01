@@ -19,6 +19,10 @@ export const PERMISOS = {
   editarFinanzas: ['ADMIN', 'OPERACIONES', 'FINANZAS'],
   /** Anular cualquier documento. */
   anular: ['ADMIN'],
+  /** Corregir documentos cerrados: órdenes de retiro cerradas y órdenes de carga rendidas. */
+  editarCerrados: ['ADMIN'],
+  /** Eliminar documentos y registros de mantenedores; la auditoría guarda una copia completa. */
+  eliminar: ['ADMIN'],
   /** Usuarios, parámetros y auditoría. */
   administrar: ['ADMIN'],
 } as const satisfies Record<string, readonly Rol[]>;

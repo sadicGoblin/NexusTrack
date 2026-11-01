@@ -23,6 +23,12 @@ Todos los listados funcionan como una planilla:
 
 Haga clic en una fila para abrir el registro.
 
+## Fechas, horas y RUT
+
+- **Fechas**: escriba solo los números (31122027) y las barras se agregan solas, o elija el día en el calendario. Con el campo vacío aparece el botón **Hoy**.
+- **Horas**: formato de 24 horas. Escriba los números (1430 queda 14:30; 930 queda 09:30) o haga clic en el campo o en el reloj y elija la hora (00 a 23) y los minutos (00 a 59). **Ahora** pone la hora actual.
+- **RUT**: escriba los números y el dígito verificador; los puntos y el guion se agregan solos.
+
 ## Mantenedores
 
 Empresas, clientes, packings, móviles, conductores y rutas y tarifas se manejan igual: botón **Nuevo** arriba a la derecha y clic en una fila para editar. Los registros no se borran: se desactivan con el interruptor **Activo**.
@@ -54,13 +60,16 @@ Desde la orden de retiro se crean los demás documentos, en la sección **Docume
 
 Botón **Crear orden de carga** en la orden de retiro, o **Órdenes de carga → Nueva** y elegir la orden de retiro en la lista.
 
-- El **tramo** solo ofrece tarifas del cliente vigentes a la fecha de carga. Marque "Mostrar tarifas vencidas" si necesita una tarifa antigua.
+- El **tramo** lista las tarifas del cliente: primero las de la ruta de la orden. Las que no rigen a la fecha de carga aparecen con su fecha de vencimiento y un aviso; se actualizan en **Mantenedores → Rutas y tarifas**.
 - En **Guías del flete**, cada fila es una guía y un tramo. Al elegir el tramo se propone su valor unitario, que puede modificar. **Agregar guía** copia los datos de la fila anterior.
+- Si deja vacío el tramo de la cabecera, la orden toma el de la primera guía.
 - Al guardar con al menos una guía se asigna el **N° de hoja de ruta**.
 
 ### 3. Vale de dinero
 
 Anticipo para el viaje. Se crea desde la orden de retiro o desde **Vales de dinero → Nuevo**. El concepto por defecto es FLETE.
+
+Debajo aparece la **cuenta del conductor**: su saldo según los fletes ya rendidos, los anticipos ya entregados para esta orden y los de otros fletes que aún no rinde. Sirve para decidir cuánto entregarle.
 
 ### 4. Vale de combustible
 
@@ -72,17 +81,38 @@ Desde la orden de carga, botón **Crear rendición**, o **Rendiciones → Nueva*
 
 Complete salida, llegada y odómetros (los kilómetros se calculan solos), peajes, carga y descarga, los **viáticos** por día y los **otros gastos** con su documento. Al emitir la rendición, la orden de carga queda **Rendida** y la orden de retiro **Cerrada**.
 
+Al final está la **cuenta del conductor**, que se recalcula mientras escribe: saldo anterior + gastos de esta rendición − anticipos de este flete = saldo de la cuenta.
+
+## Cuentas de conductores
+
+**Operación → Cuentas de conductores** muestra el saldo de cada conductor que tiene anticipos o rendiciones.
+
+- Cada flete rendido deja un resultado: gastos rendidos − anticipos (vales de dinero). El saldo es la suma de esos resultados.
+- **A favor del conductor**: gastó más de lo que se le anticipó; la empresa le debe.
+- **En contra del conductor**: le sobró anticipo; lo tiene en su poder.
+- Los fletes sin rendición no mueven el saldo: sus vales aparecen como **anticipos por rendir**.
+- Haga clic en un conductor para ver su cuenta flete a flete, y en un flete para abrir su orden de retiro.
+
+Los vales de combustible no entran en la cuenta: son combustible cargado, no dinero entregado al conductor.
+
 ## Documentos: PDF, Excel y anulación
 
 - Cada documento tiene botones **PDF** y **Excel** para descargarlo.
 - Los listados de documentos se filtran por **día**, **entre días** o **mes** (por defecto, el mes actual).
 - **Anular** requiere perfil Administrador y un motivo. Se anula del último documento al primero: rendición, luego orden de carga, luego vales y al final la orden de retiro. Al anular un documento, el anterior vuelve a quedar abierto.
 
+### Corregir y eliminar (Administrador)
+
+- El administrador puede **corregir** una orden de retiro cerrada o una orden de carga rendida; la pantalla avisa que el cambio queda en Auditoría. Los demás perfiles editan solo documentos abiertos.
+- **Eliminar** borra el documento de forma permanente. Va del último al primero, como anular: una orden de retiro con orden de carga o vales no se puede eliminar hasta eliminar esos documentos. Para un error de digitación conviene anular, porque el documento sigue a la vista con su motivo.
+- En los mantenedores (empresas, clientes, packings, móviles, conductores y tarifas), el botón **Eliminar** del formulario borra registros que nada usa. Si el registro tiene documentos o asignaciones, el sistema lo indica y hay que desactivarlo.
+- Toda eliminación queda en Auditoría con una copia completa de los datos.
+
 ## Perfiles
 
 | Perfil | Puede |
 |---|---|
-| Administrador | Todo, incluidos usuarios, catálogos, parámetros, auditoría y anulaciones |
+| Administrador | Todo, incluidos usuarios, catálogos, parámetros, auditoría, anulaciones, eliminaciones y corrección de documentos cerrados |
 | Operaciones | Mantenedores, órdenes de retiro y de carga, vales y rendiciones |
 | Finanzas | Tarifas, vales de dinero y combustible, rendiciones |
 | Solo lectura | Consultar y exportar |
@@ -92,4 +122,4 @@ Complete salida, llegada y odómetros (los kilómetros se calculan solos), peaje
 - **Usuarios**: crear cuentas, asignar perfil, desactivar o cambiar la contraseña de otro usuario.
 - **Catálogos**: las listas de la hoja BaseDatos (ciudades, depósitos, trazabilidades, etc.). Tipos de móviles y categorías de empresa se pueden renombrar o desactivar, pero no ampliar, porque el sistema los usa en su lógica.
 - **Parámetros**: datos de la empresa que aparecen en los PDF, valor del litro de combustible por defecto, concepto por defecto de los vales y días de anticipación de las alertas de vencimiento.
-- **Auditoría**: quién creó, modificó o anuló cada registro, con el detalle de los cambios.
+- **Auditoría**: quién creó, modificó, anuló, asignó o eliminó cada registro y cuándo. Cada fila muestra el documento por su número (o el móvil por su patente, la persona por su nombre). Al hacer clic se ve el detalle: en una modificación, cada campo con su valor anterior y el nuevo; en una eliminación, la copia de todos los datos, incluidas las guías, viáticos y gastos. **Abrir registro** lleva al documento.

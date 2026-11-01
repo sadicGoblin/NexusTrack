@@ -7,6 +7,7 @@ import { Select } from 'primeng/select';
 import { Textarea } from 'primeng/textarea';
 import { ToggleSwitch } from 'primeng/toggleswitch';
 import { CampoFecha } from './campo-fecha';
+import { CampoHora } from './campo-hora';
 import { mensajeError, type CampoFormulario } from './formulario';
 import { RutInput } from './rut';
 
@@ -18,6 +19,7 @@ import { RutInput } from './rut';
     InputText,
     InputNumber,
     CampoFecha,
+    CampoHora,
     RutInput,
     Select,
     ToggleSwitch,

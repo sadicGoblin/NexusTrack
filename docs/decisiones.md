@@ -142,3 +142,22 @@ ya tiene un Caddy de otro proyecto en los puertos 80 y 443. Por eso:
 - Riverpod para el estado, go_router para la navegación, Dio para la API. Sin reintentos
   automáticos: los errores se muestran con su botón «Reintentar».
 
+## 13. Cuenta del conductor, corrección y eliminación
+
+- El saldo del conductor se calcula al vuelo desde los documentos (`/cuentas-conductores`), sin
+  tabla propia: no puede desalinearse de los vales y rendiciones. Por flete: anticipos = vales de
+  dinero emitidos de la orden de retiro; rendido = total de la rendición emitida. Resultado =
+  rendido − anticipos: positivo a favor del conductor, negativo en contra. Los fletes sin rendición
+  no mueven el saldo; sus vales se muestran como anticipos por rendir.
+- Los vales de combustible no entran: son combustible cargado, no dinero entregado al conductor.
+- Todavía no hay movimientos de ajuste (pago al conductor o devolución fuera de un vale). Si se
+  liquidan saldos por fuera, haría falta registrarlos para que la cuenta no los arrastre.
+- Eliminar es solo del administrador y va del hijo al padre, como anular, sin borrados en
+  cascada: el mensaje dice qué documento bloquea. La auditoría guarda la copia completa, con
+  guías, viáticos y gastos. Los correlativos eliminados no se reutilizan.
+- El administrador corrige órdenes de retiro cerradas y órdenes de carga rendidas. Los anulados
+  no se editan: si sobran, se eliminan.
+- La hora usa un campo propio de 24 horas. El `input type="time"` del navegador depende del
+  sistema operativo: con formato de 12 horas muestra a. m./p. m. y en Safari no trae selector.
+- Si la cabecera de la orden de carga queda sin tramo, se toma el de la primera guía; las órdenes
+  emitidas antes sin tramo muestran el de sus guías.

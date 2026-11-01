@@ -62,6 +62,8 @@ import { aResumen, COLUMNAS_RETIROS } from './comun';
         volver="/operacion/vales-combustible"
         [editable]="editable() && !!form()"
         [anulable]="dto()?.estado === 'EMITIDO'"
+        [eliminable]="!!dto()"
+        [eliminar]="eliminarDocumento"
         [guardando]="guardando()"
         (guardar)="guardar()"
         (anular)="anular($event)"
@@ -304,6 +306,19 @@ export class ValeCombustible {
       this.guardando.set(false);
     }
   }
+
+  /** Solo administradores (ver BarraDocumento). */
+  readonly eliminarDocumento = async (): Promise<void> => {
+    const d = this.dto();
+    if (!d) return;
+    await this.api.eliminar(`vales-combustible/${d.id}`);
+    this.mensajes.add({
+      severity: 'success',
+      summary: 'Vale de combustible eliminado',
+      detail: `N° ${String(d.numero).padStart(6, '0')}`,
+    });
+    await this.router.navigate(['/operacion/vales-combustible'], { replaceUrl: true });
+  };
 
   async anular(motivo: string): Promise<void> {
     const d = this.dto();

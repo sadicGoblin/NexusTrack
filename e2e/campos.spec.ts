@@ -24,7 +24,7 @@ test('el botón de menú deja solo íconos con tooltip y el contenido usa todo e
   await page.getByRole('button', { name: 'Contraer menú' }).click();
   await expect.poll(() => ancho(lateral)).toBeLessThan(80);
   await expect.poll(async () => (await ancho(contenido)) + (await ancho(lateral))).toBe(pantalla);
-  await lateral.getByRole('link', { name: 'Conductores' }).hover();
+  await lateral.locator('a[href="/mantenedores/conductores"]').hover();
   await expect(page.locator('.p-tooltip')).toHaveText('Conductores');
 
   await page.reload();
@@ -65,4 +65,31 @@ test('el RUT se formatea al escribir y las fechas tienen calendario y botón Hoy
   await expect(calendario).toBeVisible();
   await calendario.getByRole('button', { name: 'Hoy' }).click();
   await expect(page.locator('#c-terminoContrato')).toHaveValue(hoy);
+});
+
+test('la hora se escribe en 24 horas o se elige entre todas las horas y minutos', async ({ page }) => {
+  await ingresar(page);
+  await page.goto('/operacion/ordenes-retiro/nuevo');
+  const hora = page.locator('#c-horaCarga');
+  await hora.pressSequentially('930');
+  await expect(hora).toHaveValue('9:30');
+  await hora.press('Tab');
+  await expect(hora).toHaveValue('09:30');
+
+  await hora.click();
+  const panel = page.locator('.p-popover').last();
+  await expect(panel).toBeVisible();
+  const listas = panel.locator('.lista');
+  await expect(listas.first().getByRole('button')).toHaveCount(24);
+  await expect(listas.last().getByRole('button')).toHaveCount(60);
+  await listas.first().getByRole('button', { name: '23', exact: true }).click();
+  await expect(hora).toHaveValue('23:30');
+  await listas.last().getByRole('button', { name: '59', exact: true }).click();
+  await expect(hora).toHaveValue('23:59');
+  await expect(panel).toBeHidden();
+
+  // Una hora imposible no se acepta: vuelve la anterior.
+  await hora.fill('25:00');
+  await hora.press('Tab');
+  await expect(hora).toHaveValue('23:59');
 });

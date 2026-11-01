@@ -1,7 +1,9 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   Injectable,
   Module,
   Param,
@@ -19,6 +21,7 @@ import {
   type GuiaFleteInput,
   type OrdenCargaDto,
   type OrdenCargaInput,
+  tienePermiso,
   type UsuarioSesion,
 } from '@nexustrack/shared';
 import { RequierePermiso, UsuarioActual } from '../comun/decoradores.js';
@@ -47,6 +50,7 @@ import {
   etiquetaEstado,
   includeRetiro,
   seccionRetiro,
+  tramoDeCarga,
 } from './retiro.mapper.js';
 
 class GuiaDtoIn implements GuiaFleteInput {
@@ -108,8 +112,8 @@ function aDto(o: Fila): OrdenCargaDto {
     numero: o.numero,
     estado: o.estado,
     ordenRetiroId: o.ordenRetiroId,
-    tramoId: o.tramoId,
-    tramo: o.tramo?.tramo ?? null,
+    tramoId: o.tramoId ?? o.guias[0]?.tramoId ?? null,
+    tramo: tramoDeCarga(o.tramo?.tramo, o.guias),
     fechaCarga: aIso(o.fechaCarga)!,
     horaCarga: o.horaCarga,
     packingCargaId: o.packingCargaId,
@@ -279,7 +283,7 @@ export class OrdenesCargaService {
         data: {
           numero,
           ordenRetiroId: retiro.id,
-          tramoId: dto.tramoId ?? null,
+          tramoId: dto.tramoId ?? lineas[0]?.tramoId ?? null,
           fechaCarga: aFecha(dto.fechaCarga)!,
           horaCarga: dto.horaCarga ?? null,
           packingCargaId: dto.packingCargaId ?? null,
@@ -323,7 +327,9 @@ export class OrdenesCargaService {
         include: { ordenRetiro: true, guias: true },
       });
       if (!antes) throw noEncontrado('La orden de carga');
-      if (antes.estado !== 'ABIERTA') {
+      const corrige =
+        antes.estado === 'RENDIDA' && tienePermiso(u.rol, 'editarCerrados');
+      if (antes.estado !== 'ABIERTA' && !corrige) {
         throw conflicto(
           `La orden de carga está ${etiquetaEstado(antes.estado).toLowerCase()} y no se puede modificar.`,
         );
@@ -343,7 +349,7 @@ export class OrdenesCargaService {
       const o = await tx.ordenCarga.update({
         where: { id },
         data: {
-          tramoId: dto.tramoId ?? null,
+          tramoId: dto.tramoId ?? lineas[0]?.tramoId ?? null,
           fechaCarga: aFecha(dto.fechaCarga)!,
           horaCarga: dto.horaCarga ?? null,
           packingCargaId: dto.packingCargaId ?? null,
@@ -376,6 +382,44 @@ export class OrdenesCargaService {
         cambios,
       });
       return aDto(o);
+    });
+  }
+
+  /** Borra la orden y sus guías; la orden de retiro vuelve a quedar abierta. */
+  async eliminar(id: number, u: UsuarioSesion): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const o = await tx.ordenCarga.findUnique({
+        where: { id },
+        include: {
+          guias: true,
+          ordenRetiro: true,
+          rendiciones: { select: { numero: true, estado: true } },
+        },
+      });
+      if (!o) throw noEncontrado('La orden de carga');
+      if (o.rendiciones.length) {
+        const r = o.rendiciones[0];
+        throw conflicto(
+          `La orden de carga tiene la rendición N° ${r.numero}${r.estado === 'ANULADO' ? ' (anulada)' : ''}: elimínela primero.`,
+        );
+      }
+      if (o.estado !== 'ANULADA' && o.ordenRetiro.estado === 'CON_CARGA') {
+        await tx.ordenRetiro.update({
+          where: { id: o.ordenRetiroId },
+          data: { estado: 'ABIERTA', actualizadoPorId: u.id },
+        });
+      }
+      await tx.ordenCarga.delete({ where: { id } });
+      await this.auditoria.registrar(tx, {
+        entidad: 'OrdenCarga',
+        entidadId: id,
+        accion: 'ELIMINAR',
+        usuarioId: u.id,
+        cambios: {
+          ...this.auditoria.instantanea(o),
+          guias: o.guias.map((g) => this.auditoria.instantanea(g)),
+        },
+      });
     });
   }
 
@@ -572,6 +616,16 @@ export class OrdenesCargaController {
     @UsuarioActual() u: UsuarioSesion,
   ) {
     return this.servicio.anular(id, dto.motivo, u);
+  }
+
+  @RequierePermiso('eliminar')
+  @Delete(':id')
+  @HttpCode(204)
+  eliminar(
+    @Param('id', ParseIntPipe) id: number,
+    @UsuarioActual() u: UsuarioSesion,
+  ) {
+    return this.servicio.eliminar(id, u);
   }
 }
 

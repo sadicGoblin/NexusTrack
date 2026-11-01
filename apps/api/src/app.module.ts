@@ -26,6 +26,7 @@ import { OrdenesCargaModule } from './documentos/ordenes-carga.js';
 import { ValesCombustibleModule } from './documentos/vales-combustible.js';
 import { RendicionesModule } from './documentos/rendiciones.js';
 import { InicioModule } from './inicio/inicio.js';
+import { CuentasModule } from './cuentas/cuentas.js';
 
 @Module({
   imports: [
@@ -54,6 +55,7 @@ import { InicioModule } from './inicio/inicio.js';
     OrdenesCargaModule,
     ValesCombustibleModule,
     RendicionesModule,
+    CuentasModule,
     InicioModule,
   ],
   controllers: [SaludController],

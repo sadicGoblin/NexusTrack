@@ -25,6 +25,10 @@ export class ApiService {
     return firstValueFrom(this.http.put<T>(`${API_BASE}/${ruta}`, cuerpo));
   }
 
+  eliminar(ruta: string): Promise<void> {
+    return firstValueFrom(this.http.delete<void>(`${API_BASE}/${ruta}`));
+  }
+
   /** Descarga un archivo generado por la API (PDF o Excel) con el nombre que propone el servidor. */
   async descargar(ruta: string): Promise<void> {
     const r = await firstValueFrom(

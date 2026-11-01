@@ -12,7 +12,8 @@ import { EstadoTag } from '../estado-tag';
 
 /**
  * Encabezado de un documento: título, número, estado y acciones comunes (guardar, PDF, Excel,
- * anular). Las acciones propias del documento se proyectan como contenido.
+ * anular y, para el administrador, eliminar). Las acciones propias del documento se proyectan
+ * como contenido.
  */
 @Component({
   selector: 'nt-barra-documento',
@@ -64,6 +65,15 @@ import { EstadoTag } from '../estado-tag';
               (onClick)="dialogo.set(true)"
             />
           }
+          @if (puedeEliminar()) {
+            <p-button
+              icon="pi pi-trash"
+              label="Eliminar"
+              severity="danger"
+              [text]="true"
+              (onClick)="dialogoEliminar.set(true)"
+            />
+          }
         }
         @if (editable()) {
           <p-button
@@ -110,8 +120,46 @@ import { EstadoTag } from '../estado-tag';
         />
       </ng-template>
     </p-dialog>
+
+    <p-dialog
+      header="Eliminar documento"
+      [(visible)]="dialogoEliminar"
+      [modal]="true"
+      [draggable]="false"
+      [style]="{ width: '30rem', maxWidth: '96vw' }"
+    >
+      <p style="margin-top: 0">
+        Se eliminará
+        <strong>{{ titulo().toLowerCase() }} N° {{ numero() | correlativo }}</strong> de forma
+        permanente. En Auditoría queda una copia con todos sus datos y quién lo eliminó.
+      </p>
+      <p class="nota">
+        Para un error de digitación conviene <strong>anular</strong>: el documento sigue a la vista
+        con su motivo. Eliminar es para registros que no debieron existir.
+      </p>
+      <ng-template #footer>
+        <p-button
+          label="Cancelar"
+          severity="secondary"
+          [text]="true"
+          (onClick)="dialogoEliminar.set(false)"
+        />
+        <p-button
+          label="Eliminar"
+          icon="pi pi-trash"
+          severity="danger"
+          [loading]="eliminando()"
+          (onClick)="confirmarEliminacion()"
+        />
+      </ng-template>
+    </p-dialog>
   `,
   styles: `
+    .nota {
+      font-size: 0.85rem;
+      color: var(--p-text-muted-color);
+      margin-bottom: 0;
+    }
     .volver {
       display: inline-flex;
       align-items: center;
@@ -150,14 +198,23 @@ export class BarraDocumento {
   readonly etiquetaVolver = input('Volver al listado');
   readonly editable = input(false);
   readonly anulable = input(false);
+  /** Muestra «Eliminar» al administrador; la API impide eliminar si hay documentos asociados. */
+  readonly eliminable = input(false);
   readonly guardando = input(false);
+  /** La página termina la eliminación (llamada a la API y navegación). */
+  readonly eliminar = input<() => Promise<void>>();
 
   readonly guardar = output<void>();
   readonly anular = output<string>();
 
   readonly puedeAnular = computed(() => this.anulable() && this.sesion.puede('anular'));
+  readonly puedeEliminar = computed(
+    () => this.eliminable() && !!this.eliminar() && this.sesion.puede('eliminar'),
+  );
   readonly descargando = signal<'pdf' | 'xlsx' | null>(null);
   readonly dialogo = signal(false);
+  readonly dialogoEliminar = signal(false);
+  readonly eliminando = signal(false);
   motivo = '';
 
   async descargar(formato: 'pdf' | 'xlsx'): Promise<void> {
@@ -166,6 +223,16 @@ export class BarraDocumento {
       await this.api.descargar(`${this.recurso()}/${formato}`);
     } finally {
       this.descargando.set(null);
+    }
+  }
+
+  async confirmarEliminacion(): Promise<void> {
+    this.eliminando.set(true);
+    try {
+      await this.eliminar()!();
+      this.dialogoEliminar.set(false);
+    } finally {
+      this.eliminando.set(false);
     }
   }
 

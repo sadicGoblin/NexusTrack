@@ -69,6 +69,13 @@ test('flujo completo de un flete: asignación → retiro → carga → vale → 
   await page.getByRole('button', { name: 'Emitir' }).click();
   await expect(page.getByRole('heading', { name: /Rendición de fletes\s+N° 000001/ })).toBeVisible();
 
+  // La cuenta del conductor: anticipo $150.000 y gastos $18.000 → $132.000 en contra.
+  const cuenta = page.locator('nt-cuenta-conductor');
+  await expect(cuenta).toContainText('vale N° 000001');
+  await expect(cuenta.locator('.linea.total')).toContainText('en contra del conductor');
+  await expect(cuenta.locator('.linea.total')).toContainText('$132.000');
+  await expect(page.getByRole('button', { name: 'Eliminar' })).toBeVisible();
+
   // 6. El documento se descarga en PDF.
   const descarga = page.waitForEvent('download');
   await page.getByRole('button', { name: 'PDF' }).click();
@@ -78,6 +85,13 @@ test('flujo completo de un flete: asignación → retiro → carga → vale → 
   await page.goto(`/operacion/ordenes-retiro/${idRetiro}`);
   await expect(page.getByText('Flete cerrado')).toBeVisible();
   await expect(page.getByRole('link', { name: 'N° 000001' }).first()).toBeVisible();
+
+  // 8. La cuenta del conductor y la auditoría lo reflejan.
+  await page.goto('/operacion/cuentas-conductores');
+  await page.getByRole('row', { name: /FERNANDO/ }).click();
+  await expect(page.getByText('Saldo · en contra del conductor')).toBeVisible();
+  await page.goto('/administracion/auditoria');
+  await expect(page.getByRole('row', { name: /Creó.*Rendición.*N° 000001/ }).first()).toBeVisible();
 });
 
 test('la grilla filtra como planilla y exporta lo filtrado a Excel', async ({ page }) => {
@@ -143,4 +157,10 @@ test('un usuario de solo lectura no ve acciones de edición ni administración',
   await page.goto('/operacion/ordenes-retiro');
   await expect(page.getByRole('heading', { name: 'Órdenes de retiro' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Nueva orden de retiro' })).toHaveCount(0);
+  await page
+    .getByRole('row', { name: /000001/ })
+    .first()
+    .click();
+  await expect(page.getByRole('heading', { name: /Orden de retiro\s+N° 000001/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Eliminar' })).toHaveCount(0);
 });

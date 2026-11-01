@@ -1,7 +1,9 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  HttpCode,
   Injectable,
   Module,
   Param,
@@ -17,7 +19,7 @@ import type {
   UsuarioSesion,
 } from '@nexustrack/shared';
 import { RequierePermiso, UsuarioActual } from '../comun/decoradores.js';
-import { exigirRutValido, noEncontrado } from '../comun/errores.js';
+import { exigirRutValido, enUso, noEncontrado } from '../comun/errores.js';
 import { Booleano, Correo, Id, Rut, Texto } from '../comun/validacion.js';
 import { AuditoriaService } from '../comun/auditoria.service.js';
 import { ReferenciasService } from '../comun/referencias.service.js';
@@ -144,6 +146,28 @@ export class EmpresasService {
       return aEmpresaDto(e);
     });
   }
+  /** Solo si nada lo usa; si no, el registro se desactiva. */
+  async eliminar(id: number, u: UsuarioSesion): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const r = await tx.empresa.findUnique({ where: { id } });
+      if (!r) throw noEncontrado('La empresa');
+      await tx.empresa
+        .delete({ where: { id } })
+        .catch((e: unknown) =>
+          enUso(
+            e,
+            'No se puede eliminar la empresa: tiene clientes, móviles, conductores o documentos asociados. Si ya no se usa, desactívela.',
+          ),
+        );
+      await this.auditoria.registrar(tx, {
+        entidad: 'Empresa',
+        entidadId: id,
+        accion: 'ELIMINAR',
+        usuarioId: u.id,
+        cambios: this.auditoria.instantanea(r),
+      });
+    });
+  }
 }
 
 @ApiTags('Mantenedores')
@@ -173,6 +197,16 @@ export class EmpresasController {
     @UsuarioActual() u: UsuarioSesion,
   ) {
     return this.servicio.actualizar(id, dto, u);
+  }
+
+  @RequierePermiso('eliminar')
+  @Delete(':id')
+  @HttpCode(204)
+  eliminar(
+    @Param('id', ParseIntPipe) id: number,
+    @UsuarioActual() u: UsuarioSesion,
+  ) {
+    return this.servicio.eliminar(id, u);
   }
 }
 

@@ -16,6 +16,7 @@ export class Moviles {
       'Parque de camiones y remolques. Las fechas en rojo están vencidas y en ámbar vencen en 30 días o menos.',
     singular: 'móvil',
     recurso: 'moviles',
+    eliminable: true,
     permiso: 'editarMantenedores',
     claveEstado: 'moviles',
     conjuntos: ['catalogos', 'empresas'],

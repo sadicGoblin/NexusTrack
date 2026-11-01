@@ -30,6 +30,7 @@ export function clienteHttp(app: INestApplication, token: string) {
         .send(body ?? {}),
     put: (url: string, body: object) =>
       s().put(`/api${url}`).set(auth).send(body),
+    delete: (url: string) => s().delete(`/api${url}`).set(auth),
   };
 }
 

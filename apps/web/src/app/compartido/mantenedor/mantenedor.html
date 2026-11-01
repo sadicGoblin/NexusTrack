@@ -37,9 +37,25 @@
     </form>
   }
   <ng-template #footer>
+    @if (puedeEliminar()) {
+      <p-button
+        label="Eliminar"
+        icon="pi pi-trash"
+        severity="danger"
+        [text]="true"
+        class="eliminar"
+        (onClick)="eliminar()"
+      />
+    }
     <p-button label="Cerrar" severity="secondary" [text]="true" (onClick)="dialogo.set(false)" />
     @if (puedeEditar()) {
       <p-button label="Guardar" icon="pi pi-check" (onClick)="guardar()" [loading]="guardando()" />
     }
   </ng-template>
 </p-dialog>
+
+<style>
+  .eliminar {
+    margin-right: auto;
+  }
+</style>

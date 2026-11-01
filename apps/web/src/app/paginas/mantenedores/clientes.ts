@@ -12,6 +12,7 @@ export class Clientes {
     descripcion: 'Clientes que solicitan los fletes.',
     singular: 'cliente',
     recurso: 'clientes',
+    eliminable: true,
     permiso: 'editarMantenedores',
     claveEstado: 'clientes',
     invalidar: 'clientes',
