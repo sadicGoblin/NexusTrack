@@ -28,6 +28,12 @@
       }
     }
   </nav>
+  <div class="version" [pTooltip]="detalleVersion" tooltipPosition="right">
+    <span>{{ version }}</span>
+    @if (commit) {
+      <span class="commit">{{ commit }}</span>
+    }
+  </div>
 </ng-template>
 
 <div class="shell">

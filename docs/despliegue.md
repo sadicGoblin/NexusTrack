@@ -106,6 +106,11 @@ Si la persona tiene un formulario con cambios sin guardar, puede elegir «Guarda
 10 minutos, con una franja que lo recuerda, y el aviso vuelve a bloquear apenas guarda o al
 vencer el plazo. También aparece si una pantalla falla al abrir porque su código ya cambió.
 
+Al pie del menú se ve la versión publicada, por ejemplo **v1.7 · ed4ac12**: el número es
+1.<cantidad de commits> y sube solo con cada cambio; el código es el commit de GitHub. Al pasar
+el mouse se ve la fecha de publicación. Sirve para saber qué versión tiene un usuario y comparar
+en GitHub qué le falta. Si se publica con cambios sin commit, el código lleva un `*`.
+
 Las pantallas que editan sin formulario (como Parámetros) marcan lo pendiente con la clase
 `nt-sin-guardar` para que el aviso lo detecte.
 

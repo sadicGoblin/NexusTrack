@@ -8,6 +8,8 @@
 }
 
 .lateral {
+  display: flex;
+  flex-direction: column;
   width: 248px;
   flex-shrink: 0;
   position: sticky;
@@ -130,6 +132,33 @@
     i {
       color: inherit;
     }
+  }
+}
+
+.version {
+  margin-top: auto;
+  padding: 1.25rem 0.75rem 0;
+  display: flex;
+  gap: 0.4rem;
+  white-space: nowrap;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--p-text-muted-color);
+  cursor: default;
+
+  .commit {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    opacity: 0.75;
+  }
+}
+
+.lateral.compacto .version {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+
+  .commit {
+    display: none;
   }
 }
 

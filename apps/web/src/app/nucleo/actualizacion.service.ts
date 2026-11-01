@@ -2,8 +2,35 @@ import { Injectable, inject, signal } from '@angular/core';
 import { NavigationEnd, NavigationError, Router } from '@angular/router';
 
 declare const NT_VERSION: string | undefined;
-/** Versión de esta compilación; la define el script de despliegue. Vacía en desarrollo. */
+declare const NT_VERSION_APP: string | undefined;
+declare const NT_COMMIT: string | undefined;
+/** Versión de esta compilación (AAAAMMDDHHMMSS, UTC); la define el script de despliegue. Vacía en desarrollo. */
 export const VERSION_WEB = typeof NT_VERSION !== 'undefined' ? NT_VERSION : '';
+/** Versión para conversar con el cliente: 1.<n° de commits>. Vacía en desarrollo. */
+export const VERSION_APP = typeof NT_VERSION_APP !== 'undefined' ? NT_VERSION_APP : '';
+/** Commit de GitHub publicado; termina en * si se publicó con cambios sin commit. */
+export const COMMIT_APP = typeof NT_COMMIT !== 'undefined' ? NT_COMMIT : '';
+
+/** Fecha y hora de publicación en Chile, a partir de VERSION_WEB. */
+export function fechaPublicacion(version = VERSION_WEB): string {
+  const m = /^(\d{4})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})$/.exec(version);
+  if (!m) return '';
+  const fecha = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]));
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat('es-CL', {
+      timeZone: 'America/Santiago',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    })
+      .formatToParts(fecha)
+      .map((x) => [x.type, x.value]),
+  );
+  return `${p['day']}/${p['month']}/${p['year']} ${p['hour']}:${p['minute']}`;
+}
 
 const CADA_REVISION = 5 * 60_000;
 const MINIMO_ENTRE_REVISIONES = 30_000;

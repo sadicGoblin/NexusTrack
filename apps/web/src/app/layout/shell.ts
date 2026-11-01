@@ -13,6 +13,7 @@ import { Menu } from 'primeng/menu';
 import { Password } from 'primeng/password';
 import { Tooltip } from 'primeng/tooltip';
 import { ROL_ETIQUETA } from '@nexustrack/shared';
+import { COMMIT_APP, fechaPublicacion, VERSION_APP } from '../nucleo/actualizacion.service';
 import { guardarPreferencia, leerPreferencia } from '../nucleo/preferencias';
 import { SesionService } from '../nucleo/sesion.service';
 import { MENU } from './navegacion';
@@ -67,6 +68,13 @@ export class Shell {
   readonly menuCompacto = signal(leerPreferencia(CLAVE_MENU) === 'si');
   private readonly consultaAngosta = window.matchMedia?.(PANTALLA_ANGOSTA);
   readonly pantallaAngosta = signal(this.consultaAngosta?.matches ?? false);
+  /** Versión publicada, al pie del menú, para saber qué tiene cada usuario. */
+  readonly version = VERSION_APP ? `v${VERSION_APP}` : 'desarrollo';
+  readonly commit = COMMIT_APP;
+  readonly detalleVersion = VERSION_APP
+    ? `Versión ${VERSION_APP} · commit ${COMMIT_APP} · publicada el ${fechaPublicacion()}`
+    : 'Versión de desarrollo';
+
   readonly etiquetaMenu = computed(() =>
     this.pantallaAngosta() ? 'Abrir menú' : this.menuCompacto() ? 'Expandir menú' : 'Contraer menú',
   );
