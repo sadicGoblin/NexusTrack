@@ -22,6 +22,8 @@ export class ListaOrdenesRetiro {
       'Primer documento de cada flete. Desde aquí se emiten la orden de carga y los vales.',
     recurso: 'ordenes-retiro',
     claveEstado: 'ordenes-retiro',
+    estados: ['ABIERTA', 'CON_CARGA', 'CERRADA', 'ANULADA'],
+    todos: 'Todas',
     etiquetaNuevo: 'Nueva orden de retiro',
     permisoNuevo: 'editarOperacion',
     columnas: [
@@ -57,6 +59,8 @@ export class ListaOrdenesCarga {
       'Guías del flete valorizadas según las tarifas del cliente. El listado se filtra por fecha de carga.',
     recurso: 'ordenes-carga',
     claveEstado: 'ordenes-carga',
+    estados: ['ABIERTA', 'RENDIDA', 'ANULADA'],
+    todos: 'Todas',
     etiquetaNuevo: 'Nueva orden de carga',
     permisoNuevo: 'editarOperacion',
     aplanar: (o: OrdenCargaDto) => ({
@@ -104,6 +108,8 @@ export class ListaValesDinero {
     descripcion: 'Anticipos entregados a los conductores para cada viaje.',
     recurso: 'vales-dinero',
     claveEstado: 'vales-dinero',
+    estados: ['EMITIDO', 'ANULADO'],
+    todos: 'Todos',
     etiquetaNuevo: 'Nuevo vale de dinero',
     permisoNuevo: 'editarFinanzas',
     aplanar: (v: ValeDineroDto) => ({
@@ -149,6 +155,8 @@ export class ListaValesCombustible {
     descripcion: 'Órdenes de entrega de combustible al terminar cada flete.',
     recurso: 'vales-combustible',
     claveEstado: 'vales-combustible',
+    estados: ['EMITIDO', 'ANULADO'],
+    todos: 'Todos',
     etiquetaNuevo: 'Nuevo vale de combustible',
     permisoNuevo: 'editarFinanzas',
     aplanar: (v: ValeCombustibleDto) => ({
@@ -204,6 +212,8 @@ export class ListaRendiciones {
     descripcion: 'Rendición de gastos y viáticos de cada orden de carga.',
     recurso: 'rendiciones',
     claveEstado: 'rendiciones',
+    estados: ['EMITIDO', 'ANULADO'],
+    todos: 'Todas',
     etiquetaNuevo: 'Nueva rendición',
     permisoNuevo: 'editarFinanzas',
     aplanar: (r: RendicionDto) => ({

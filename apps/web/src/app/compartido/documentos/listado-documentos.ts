@@ -1,8 +1,11 @@
-import { Component, computed, inject, input, signal } from '@angular/core';
+import { Component, computed, inject, input, signal, type OnInit } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { Button } from 'primeng/button';
-import type { Permiso } from '@nexustrack/shared';
+import { SelectButton } from 'primeng/selectbutton';
+import { ESTADO_ETIQUETA, type Estado, type Permiso } from '@nexustrack/shared';
 import { ApiService } from '../../nucleo/api.service';
+import { guardarPreferencia, leerPreferencia } from '../../nucleo/preferencias';
 import { SesionService } from '../../nucleo/sesion.service';
 import { TablaDatos, type ColumnaTabla } from '../tabla/tabla-datos';
 import { FiltroFechas, type RangoFechas } from './filtro-fechas';
@@ -17,12 +20,21 @@ export interface ConfigListado {
   permisoNuevo: Permiso;
   /** Convierte cada documento en una fila plana para la grilla. */
   aplanar?: (doc: any) => Record<string, unknown>;
+  /** Estados que se ofrecen como botones de filtro rápido, en ese orden. */
+  estados: Estado[];
+  /** Texto del botón sin filtro: "Todas" o "Todos". */
+  todos: string;
 }
 
-/** Listado de documentos con filtro por fechas, grilla exportable y acceso al detalle. */
+const TODOS = 'TODOS';
+
+/**
+ * Listado de documentos con filtro por fechas, botones por estado (un clic, sin activar los
+ * filtros de la grilla), grilla exportable y acceso al detalle.
+ */
 @Component({
   selector: 'nt-listado-documentos',
-  imports: [TablaDatos, FiltroFechas, Button, RouterLink],
+  imports: [TablaDatos, FiltroFechas, Button, RouterLink, SelectButton, FormsModule],
   template: `
     <div class="nt-encabezado">
       <div>
@@ -36,18 +48,36 @@ export interface ConfigListado {
         }
       </div>
     </div>
+    <p-selectbutton
+      class="estados"
+      [options]="opcionesEstado()"
+      [ngModel]="estado()"
+      (ngModelChange)="elegirEstado($event)"
+      optionLabel="label"
+      optionValue="value"
+      [allowEmpty]="false"
+      size="small"
+      aria-label="Filtrar por estado"
+    />
     <nt-tabla
-      [filas]="filas()"
+      [filas]="visibles()"
       [columnas]="config().columnas"
       [titulo]="config().titulo"
-      [subtitulo]="rango()?.descripcion ?? ''"
+      [subtitulo]="subtitulo()"
       [cargando]="cargando()"
       [claveEstado]="config().claveEstado"
       (seleccionar)="abrir($event)"
     />
   `,
+  styles: `
+    .estados {
+      display: flex;
+      flex-wrap: wrap;
+      margin-bottom: 0.75rem;
+    }
+  `,
 })
-export class ListadoDocumentos {
+export class ListadoDocumentos implements OnInit {
   private readonly api = inject(ApiService);
   private readonly router = inject(Router);
   private readonly sesion = inject(SesionService);
@@ -62,6 +92,42 @@ export class ListadoDocumentos {
     const aplanar = this.config().aplanar;
     return aplanar ? this.documentos().map(aplanar) : this.documentos();
   });
+  /** Estado elegido en los botones; se recuerda por listado en este navegador. */
+  readonly estado = signal<string>(TODOS);
+  readonly visibles = computed(() => {
+    const e = this.estado();
+    return e === TODOS ? this.filas() : this.filas().filter((f) => f['estado'] === e);
+  });
+  readonly opcionesEstado = computed(() => {
+    const filas = this.filas();
+    const cuantos = (e: string) => filas.filter((f) => f['estado'] === e).length;
+    return [
+      { label: `${this.config().todos} (${filas.length})`, value: TODOS },
+      ...this.config().estados.map((e) => ({
+        label: `${ESTADO_ETIQUETA[e]} (${cuantos(e)})`,
+        value: e,
+      })),
+    ];
+  });
+  readonly subtitulo = computed(() => {
+    const rango = this.rango()?.descripcion ?? '';
+    const e = this.estado();
+    return e === TODOS ? rango : `${rango} · ${ESTADO_ETIQUETA[e as Estado]}`;
+  });
+
+  private get clavePreferencia(): string {
+    return `nt-estado-${this.config().claveEstado}`;
+  }
+
+  ngOnInit(): void {
+    const guardado = leerPreferencia(this.clavePreferencia);
+    if (guardado && this.config().estados.includes(guardado as Estado)) this.estado.set(guardado);
+  }
+
+  elegirEstado(e: string): void {
+    this.estado.set(e);
+    guardarPreferencia(this.clavePreferencia, e);
+  }
 
   async filtrar(rango: RangoFechas): Promise<void> {
     this.rango.set(rango);

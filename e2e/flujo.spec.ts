@@ -94,6 +94,22 @@ test('flujo completo de un flete: asignación → retiro → carga → vale → 
   await expect(page.getByRole('row', { name: /Creó.*Rendición.*N° 000001/ }).first()).toBeVisible();
 });
 
+test('los botones de estado filtran el listado con un clic y se recuerdan', async ({ page }) => {
+  await ingresar(page);
+  await page.goto('/operacion/ordenes-retiro');
+  const estados = page.locator('p-selectbutton.estados');
+  const filas = page.locator('nt-tabla tbody tr');
+  await expect(estados.getByText('Cerrada (1)')).toBeVisible();
+  await estados.getByText('Abierta (0)').click();
+  await expect(filas).toHaveCount(1); // fila de «sin registros»
+  await expect(page.getByRole('row', { name: /000001/ })).toHaveCount(0);
+  await estados.getByText('Cerrada (1)').click();
+  await expect(page.getByRole('row', { name: /000001/ })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('row', { name: /000001/ })).toBeVisible();
+  await estados.getByText(/^Todas/).click();
+});
+
 test('la grilla filtra como planilla y exporta lo filtrado a Excel', async ({ page }) => {
   await ingresar(page);
   await page.goto('/mantenedores/moviles');
