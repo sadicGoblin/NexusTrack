@@ -11,7 +11,7 @@ import { FechaPipe, PesosPipe } from '../../nucleo/pipes';
 import { TablaDatos, type ColumnaTabla } from '../../compartido/tabla/tabla-datos';
 
 const AYUDA =
-  'A favor del conductor: gastó más de lo anticipado y la empresa le debe. En contra: le sobró anticipo y lo tiene en su poder.';
+  'A favor (positivo): le sobró anticipo y lo usa en el próximo flete. En contra (negativo): gastó más de lo anticipado y puso dinero propio.';
 
 const ESTILOS = `
   .resumen {
@@ -126,7 +126,6 @@ export class CuentasConductores {
     this.cuentas().map((c) => ({
       ...c,
       rut: formatearRut(c.rut),
-      monto: Math.abs(c.saldo),
       sentido: capitalizar(sentidoSaldo(c.saldo)),
     })),
   );
@@ -137,7 +136,7 @@ export class CuentasConductores {
     return {
       favor: favor.reduce((s, x) => s + x.saldo, 0),
       conFavor: favor.length,
-      contra: -contra.reduce((s, x) => s + x.saldo, 0),
+      contra: contra.reduce((s, x) => s + x.saldo, 0),
       conContra: contra.length,
       porRendir: c.reduce((s, x) => s + x.porRendir, 0),
       fletes: c.reduce((s, x) => s + x.fletesPorRendir, 0),
@@ -148,7 +147,7 @@ export class CuentasConductores {
     { campo: 'conductor', titulo: 'Conductor', ancho: '16rem' },
     { campo: 'rut', titulo: 'RUT', ancho: '8.5rem' },
     { campo: 'empresa', titulo: 'Empresa', filtro: 'lista', ancho: '14rem' },
-    { campo: 'monto', titulo: 'Saldo', tipo: 'pesos' },
+    { campo: 'saldo', titulo: 'Saldo', tipo: 'pesos' },
     { campo: 'sentido', titulo: 'Sentido', filtro: 'lista' },
     { campo: 'porRendir', titulo: 'Anticipos por rendir', tipo: 'pesos' },
     { campo: 'fletesPorRendir', titulo: 'Fletes por rendir', tipo: 'numero' },
@@ -193,7 +192,7 @@ export class CuentasConductores {
       <div class="resumen">
         <div class="cifra" [class.favor]="c.saldo > 0" [class.contra]="c.saldo < 0">
           <span>Saldo · {{ sentido() }}</span>
-          <strong>{{ abs(c.saldo) | pesos }}</strong>
+          <strong>{{ c.saldo | pesos }}</strong>
           <small>Suma de los fletes rendidos</small>
         </div>
         <div class="cifra">
@@ -208,8 +207,8 @@ export class CuentasConductores {
         </div>
       </div>
       <p class="ayuda">
-        Cada flete rendido deja un resultado = gastos rendidos − anticipos. Positivo: a favor del
-        conductor; negativo: en contra. El saldo es la suma de esos resultados.
+        Cada flete rendido deja un resultado = anticipos − gastos rendidos. Positivo: a favor del
+        conductor; negativo: en contra. El saldo se arrastra de un flete a otro.
       </p>
     }
 
@@ -275,10 +274,6 @@ export class CuentaDeConductor {
   }
 
   readonly plural = plural;
-
-  protected abs(v: number): number {
-    return Math.abs(v);
-  }
 
   abrir(fila: { ordenRetiroId: number }): void {
     void this.router.navigate(['/operacion/ordenes-retiro', fila.ordenRetiroId]);

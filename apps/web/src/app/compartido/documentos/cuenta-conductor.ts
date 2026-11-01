@@ -6,7 +6,7 @@ import { CorrelativoPipe, PesosPipe } from '../../nucleo/pipes';
 
 /**
  * Cuenta del conductor dentro de un documento. En una rendición muestra cómo el flete mueve el
- * saldo (anterior + rendido − anticipos); en un vale de dinero, el saldo y los anticipos que el
+ * saldo (anterior + anticipos − gastos); en un vale de dinero, el saldo y los anticipos que el
  * conductor todavía no rinde, para decidir cuánto entregarle.
  */
 @Component({
@@ -29,12 +29,7 @@ import { CorrelativoPipe, PesosPipe } from '../../nucleo/pipes';
               <span class="sentido" [attr.data-sentido]="signo(anterior())">{{
                 sentido(anterior())
               }}</span>
-              <strong>{{ monto(anterior()) | pesos }}</strong>
-            </div>
-            <div class="linea">
-              <span>Gastos de esta rendición</span>
-              <span></span>
-              <strong>+ {{ totalRendicion() | pesos }}</strong>
+              <strong>{{ anterior() | pesos }}</strong>
             </div>
             <div class="linea">
               <span
@@ -44,14 +39,19 @@ import { CorrelativoPipe, PesosPipe } from '../../nucleo/pipes';
                 }
               </span>
               <span></span>
-              <strong>− {{ anticipos() | pesos }}</strong>
+              <strong>+ {{ anticipos() | pesos }}</strong>
+            </div>
+            <div class="linea">
+              <span>Gastos de esta rendición</span>
+              <span></span>
+              <strong>− {{ totalRendicion() | pesos }}</strong>
             </div>
             <div class="linea total">
               <span>Saldo de la cuenta</span>
               <span class="sentido" [attr.data-sentido]="signo(nuevo())">{{
                 sentido(nuevo())
               }}</span>
-              <strong>{{ monto(nuevo()) | pesos }}</strong>
+              <strong>{{ nuevo() | pesos }}</strong>
             </div>
           } @else {
             <div class="linea total">
@@ -59,7 +59,7 @@ import { CorrelativoPipe, PesosPipe } from '../../nucleo/pipes';
               <span class="sentido" [attr.data-sentido]="signo(c.saldo)">{{
                 sentido(c.saldo)
               }}</span>
-              <strong>{{ monto(c.saldo) | pesos }}</strong>
+              <strong>{{ c.saldo | pesos }}</strong>
             </div>
             <div class="linea">
               <span
@@ -92,8 +92,8 @@ import { CorrelativoPipe, PesosPipe } from '../../nucleo/pipes';
           }
         </div>
         <p class="ayuda">
-          <strong>A favor del conductor:</strong> gastó más de lo anticipado y la empresa le debe.
-          <strong>En contra:</strong> le sobró anticipo y lo tiene en su poder.
+          <strong>A favor (positivo):</strong> le sobró anticipo y lo usa en el próximo flete.
+          <strong>En contra (negativo):</strong> gastó más de lo anticipado y puso dinero propio.
         </p>
       </section>
     }
@@ -194,7 +194,7 @@ export class CuentaConductor {
   readonly anterior = computed(() =>
     saldoAntesDe(this.cuenta()?.fletes ?? [], this.ordenRetiroId()),
   );
-  readonly nuevo = computed(() => this.anterior() + this.totalRendicion() - this.anticipos());
+  readonly nuevo = computed(() => this.anterior() + this.anticipos() - this.totalRendicion());
   readonly otrosPorRendir = computed(() =>
     (this.cuenta()?.fletes ?? []).filter(
       (f) => f.rendido === null && f.anticipos > 0 && f.ordenRetiroId !== this.ordenRetiroId(),
@@ -214,10 +214,6 @@ export class CuentaConductor {
 
   private async cargar(id: number): Promise<void> {
     this.cuenta.set(await this.api.get<DetalleCuentaDto>(`cuentas-conductores/${id}`));
-  }
-
-  protected monto(saldo: number): number {
-    return Math.abs(saldo);
   }
 
   protected sentido(saldo: number): string {

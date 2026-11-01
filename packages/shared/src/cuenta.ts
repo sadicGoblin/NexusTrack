@@ -1,10 +1,11 @@
 /**
  * Cuenta del conductor: lo que se le anticipa (vales de dinero) contra lo que rinde (total de la
- * rendición), flete a flete. Cada flete rendido deja un resultado = rendido − anticipos, que se
- * acumula en el saldo de la cuenta:
- *   positivo → a favor del conductor (gastó más de lo anticipado; la empresa le debe);
- *   negativo → en contra del conductor (le sobró anticipo; lo tiene en su poder).
- * Los fletes sin rendición no mueven el saldo: sus anticipos quedan «por rendir».
+ * rendición), flete a flete, como en las planillas de la empresa. Cada flete rendido deja un
+ * resultado = anticipos − rendido, que se acumula en el saldo de la cuenta:
+ *   positivo → a favor del conductor (le sobró anticipo; lo usa en el próximo flete);
+ *   negativo → en contra del conductor (gastó más de lo anticipado; puso dinero propio).
+ * El saldo se arrastra de un flete a otro: no hay devoluciones ni pagos aparte, se compensa con
+ * los anticipos. Los fletes sin rendición no mueven el saldo: sus anticipos quedan «por rendir».
  */
 
 type Fecha = string;
@@ -30,7 +31,7 @@ export interface FleteCuentaDto {
   fechaRendicion: Fecha | null;
   /** Total de la rendición; null mientras el flete no se rinde. */
   rendido: number | null;
-  /** Rendido − anticipos; null mientras el flete no se rinde. */
+  /** Anticipos − rendido; null mientras el flete no se rinde. */
   resultado: number | null;
   /** Saldo de la cuenta después de este flete; null mientras no se rinde. */
   saldo: number | null;
@@ -70,7 +71,7 @@ export function armarCuenta(fletes: FleteSinCalcular[]): FleteCuentaDto[] {
   return [
     ...rendidos.map((f) => {
       const anticipos = sumarVales(f.vales);
-      const resultado = f.rendido! - anticipos;
+      const resultado = anticipos - f.rendido!;
       saldo += resultado;
       return { ...f, anticipos, resultado, saldo };
     }),

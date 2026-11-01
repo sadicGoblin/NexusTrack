@@ -81,15 +81,16 @@ Desde la orden de carga, botón **Crear rendición**, o **Rendiciones → Nueva*
 
 Complete salida, llegada y odómetros (los kilómetros se calculan solos), peajes, carga y descarga, los **viáticos** por día y los **otros gastos** con su documento. Al emitir la rendición, la orden de carga queda **Rendida** y la orden de retiro **Cerrada**.
 
-Al final está la **cuenta del conductor**, que se recalcula mientras escribe: saldo anterior + gastos de esta rendición − anticipos de este flete = saldo de la cuenta.
+Al final está la **cuenta del conductor**, que se recalcula mientras escribe: saldo anterior + anticipos de este flete − gastos de esta rendición = saldo de la cuenta.
 
 ## Cuentas de conductores
 
 **Operación → Cuentas de conductores** muestra el saldo de cada conductor que tiene anticipos o rendiciones.
 
-- Cada flete rendido deja un resultado: gastos rendidos − anticipos (vales de dinero). El saldo es la suma de esos resultados.
-- **A favor del conductor**: gastó más de lo que se le anticipó; la empresa le debe.
-- **En contra del conductor**: le sobró anticipo; lo tiene en su poder.
+- Cada flete rendido deja un resultado: anticipos (vales de dinero) − gastos rendidos, igual que en las planillas. El saldo es la suma de esos resultados y se arrastra de un flete a otro.
+- **A favor del conductor** (positivo): le sobró anticipo y lo usa en el próximo flete.
+- **En contra del conductor** (negativo): gastó más de lo anticipado y puso dinero propio.
+- No hay devoluciones ni transferencias aparte: el saldo se compensa con los anticipos siguientes.
 - Los fletes sin rendición no mueven el saldo: sus vales aparecen como **anticipos por rendir**.
 - Haga clic en un conductor para ver su cuenta flete a flete, y en un flete para abrir su orden de retiro.
 

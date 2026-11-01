@@ -69,10 +69,10 @@ test('flujo completo de un flete: asignación → retiro → carga → vale → 
   await page.getByRole('button', { name: 'Emitir' }).click();
   await expect(page.getByRole('heading', { name: /Rendición de fletes\s+N° 000001/ })).toBeVisible();
 
-  // La cuenta del conductor: anticipo $150.000 y gastos $18.000 → $132.000 en contra.
+  // La cuenta del conductor: anticipo $150.000 y gastos $18.000 → $132.000 a favor.
   const cuenta = page.locator('nt-cuenta-conductor');
   await expect(cuenta).toContainText('vale N° 000001');
-  await expect(cuenta.locator('.linea.total')).toContainText('en contra del conductor');
+  await expect(cuenta.locator('.linea.total')).toContainText('a favor del conductor');
   await expect(cuenta.locator('.linea.total')).toContainText('$132.000');
   await expect(page.getByRole('button', { name: 'Eliminar' })).toBeVisible();
 
@@ -89,7 +89,7 @@ test('flujo completo de un flete: asignación → retiro → carga → vale → 
   // 8. La cuenta del conductor y la auditoría lo reflejan.
   await page.goto('/operacion/cuentas-conductores');
   await page.getByRole('row', { name: /FERNANDO/ }).click();
-  await expect(page.getByText('Saldo · en contra del conductor')).toBeVisible();
+  await expect(page.getByText('Saldo · a favor del conductor')).toBeVisible();
   await page.goto('/administracion/auditoria');
   await expect(page.getByRole('row', { name: /Creó.*Rendición.*N° 000001/ }).first()).toBeVisible();
 });

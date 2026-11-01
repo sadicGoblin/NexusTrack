@@ -147,11 +147,12 @@ ya tiene un Caddy de otro proyecto en los puertos 80 y 443. Por eso:
 - El saldo del conductor se calcula al vuelo desde los documentos (`/cuentas-conductores`), sin
   tabla propia: no puede desalinearse de los vales y rendiciones. Por flete: anticipos = vales de
   dinero emitidos de la orden de retiro; rendido = total de la rendición emitida. Resultado =
-  rendido − anticipos: positivo a favor del conductor, negativo en contra. Los fletes sin rendición
-  no mueven el saldo; sus vales se muestran como anticipos por rendir.
+  anticipos − rendido, como en las planillas del cliente: positivo a favor del conductor (le sobró
+  anticipo), negativo en contra (puso dinero propio). Los fletes sin rendición no mueven el saldo;
+  sus vales se muestran como anticipos por rendir.
 - Los vales de combustible no entran: son combustible cargado, no dinero entregado al conductor.
-- Todavía no hay movimientos de ajuste (pago al conductor o devolución fuera de un vale). Si se
-  liquidan saldos por fuera, haría falta registrarlos para que la cuenta no los arrastre.
+- Sin movimientos de ajuste: el cliente confirmó (01-11-2026) que no hay devoluciones ni
+  transferencias aparte; el saldo se arrastra y se compensa con los anticipos siguientes.
 - Eliminar es solo del administrador y va del hijo al padre, como anular, sin borrados en
   cascada: el mensaje dice qué documento bloquea. La auditoría guarda la copia completa, con
   guías, viáticos y gastos. Los correlativos eliminados no se reutilizan.

@@ -152,8 +152,8 @@ describe('cuenta del conductor', () => {
     rendido: rendicion?.total ?? null,
   });
 
-  // Flete 1: anticipo 100.000, gastó 120.000 → +20.000 (a favor del conductor).
-  // Flete 2: anticipos 50.000 + 30.000, gastó 70.000 → −10.000; saldo +10.000.
+  // Flete 1: anticipo 100.000, gastó 120.000 → −20.000 (en contra: puso plata propia).
+  // Flete 2: anticipos 50.000 + 30.000, gastó 70.000 → +10.000; saldo −10.000.
   // Flete 3: anticipo 60.000 sin rendir.
   const fletes = armarCuenta([
     flete(3, [60000]),
@@ -163,15 +163,15 @@ describe('cuenta del conductor', () => {
 
   it('ordena los rendidos por fecha de rendición y acumula el saldo', () => {
     expect(fletes.map((f) => [f.ordenRetiroNumero, f.anticipos, f.resultado, f.saldo])).toEqual([
-      [1, 100000, 20000, 20000],
-      [2, 80000, -10000, 10000],
+      [1, 100000, -20000, -20000],
+      [2, 80000, 10000, -10000],
       [3, 60000, null, null],
     ]);
   });
 
   it('resume saldo y anticipos por rendir', () => {
     expect(resumirCuenta(fletes)).toEqual({
-      saldo: 10000,
+      saldo: -10000,
       porRendir: 60000,
       fletesPorRendir: 1,
       ultimoMovimiento: '2026-10-09',
@@ -180,9 +180,9 @@ describe('cuenta del conductor', () => {
 
   it('da el saldo previo a cada flete', () => {
     expect(saldoAntesDe(fletes, 1)).toBe(0);
-    expect(saldoAntesDe(fletes, 2)).toBe(20000);
+    expect(saldoAntesDe(fletes, 2)).toBe(-20000);
     // Un flete sin rendir ve el saldo actual.
-    expect(saldoAntesDe(fletes, 3)).toBe(10000);
+    expect(saldoAntesDe(fletes, 3)).toBe(-10000);
   });
 
   it('describe el sentido del saldo', () => {

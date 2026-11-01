@@ -489,7 +489,7 @@ describe('Documentos operativos: flujo completo', () => {
     });
 
     it('lleva el saldo, deja corregir al administrador y elimina en orden', async () => {
-      // Flete rendido: anticipos 60.000 + 40.000, gastos 120.000 → 20.000 a favor del conductor.
+      // Flete rendido: anticipos 60.000 + 40.000, gastos 120.000 → −20.000, en contra del conductor.
       const or = await nuevaOrdenRetiro('2026-09-10');
       const v1 = await vale(or.id, 60000);
       const v2 = await vale(or.id, 40000);
@@ -526,7 +526,7 @@ describe('Documentos operativos: flujo completo', () => {
       expect(flete).toMatchObject({
         anticipos: 100000,
         rendido: 120000,
-        resultado: 20000,
+        resultado: -20000,
         rendicionNumero: rd.numero,
       });
       expect(cuenta.saldo).toBe(
