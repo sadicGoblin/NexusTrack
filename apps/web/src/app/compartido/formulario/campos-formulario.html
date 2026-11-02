@@ -1,4 +1,4 @@
-<div class="nt-grilla" [formGroup]="form()">
+<div class="nt-grilla" [class.nt-grilla-5]="columnas() === 5" [formGroup]="form()">
   @for (c of campos(); track c.campo) {
     <div class="nt-campo" [class]="'nt-ancho-' + (c.ancho ?? 1)">
       <label [for]="'c-' + c.campo" [class.requerido]="c.requerido && !soloLectura()">{{

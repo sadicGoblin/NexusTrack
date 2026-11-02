@@ -79,7 +79,10 @@ Se emite al terminar el flete. Las patentes vienen de la orden de retiro. Ingres
 
 Desde la orden de carga, botón **Crear rendición**, o **Rendiciones → Nueva**. Solo aparecen órdenes de carga con guías registradas.
 
-Complete salida, llegada y odómetros (los kilómetros se calculan solos), peajes, carga y descarga, los **viáticos** por día y los **otros gastos** con su documento. Al emitir la rendición, la orden de carga queda **Rendida** y la orden de retiro **Cerrada**.
+Complete salida, llegada y odómetros (los kilómetros se calculan solos), peajes, carga, descarga y **petróleo** pagado en ruta, los **viáticos** por día y los **otros gastos** con su documento.
+
+- **Motor del remolque**: junto a la patente y el tipo de remolque, marque **Con motor** o **Sin motor** según lo que indica el conductor; el uso del motor se cobra aparte. Para dejarlo sin indicar, vuelva a hacer clic en la opción marcada.
+- **Horómetros**: a la derecha de los odómetros, el horómetro inicial y final del motor del remolque; el **total de horas** se calcula solo y sirve para el rendimiento del motor. Al emitir la rendición, la orden de carga queda **Rendida** y la orden de retiro **Cerrada**.
 
 Al final está la **cuenta del conductor**, que se recalcula mientras escribe: saldo anterior + anticipos de este flete − gastos de esta rendición = saldo de la cuenta.
 

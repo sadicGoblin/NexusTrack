@@ -7,6 +7,7 @@ import { InputNumber } from 'primeng/inputnumber';
 import { InputText } from 'primeng/inputtext';
 import { Message } from 'primeng/message';
 import { Select } from 'primeng/select';
+import { SelectButton } from 'primeng/selectbutton';
 import { Tooltip } from 'primeng/tooltip';
 import {
   calcularRendicion,
@@ -86,6 +87,7 @@ interface CabeceraCarga {
     InputNumber,
     InputText,
     Select,
+    SelectButton,
     Message,
     Tooltip,
     PesosPipe,
@@ -136,10 +138,18 @@ export class Rendicion {
     { campo: 'fechaSalida', etiqueta: 'Fecha salida', tipo: 'fecha' },
     { campo: 'horaSalida', etiqueta: 'Hora salida', tipo: 'hora' },
     { campo: 'odometroInicial', etiqueta: 'Odómetro inicial', tipo: 'entero', min: 0 },
+    {
+      campo: 'horometroInicial',
+      etiqueta: 'Horómetro inicial',
+      tipo: 'decimal',
+      decimales: 1,
+      min: 0,
+    },
     { campo: 'fechaEntrega', etiqueta: 'Fecha de entrega', tipo: 'fecha' },
     { campo: 'fechaLlegada', etiqueta: 'Fecha llegada', tipo: 'fecha' },
     { campo: 'horaLlegada', etiqueta: 'Hora llegada', tipo: 'hora' },
     { campo: 'odometroFinal', etiqueta: 'Odómetro final', tipo: 'entero', min: 0 },
+    { campo: 'horometroFinal', etiqueta: 'Horómetro final', tipo: 'decimal', decimales: 1, min: 0 },
     {
       campo: 'sitioEntregaId',
       etiqueta: 'Sitio de entrega',
@@ -156,12 +166,34 @@ export class Rendicion {
           ? `${this.totales().kmRecorridos!.toLocaleString('es-CL')} km`
           : '',
     },
+    {
+      campo: 'horasMotor',
+      etiqueta: 'Total horas',
+      tipo: 'calculado',
+      calcular: () =>
+        this.totales().horasMotor !== null
+          ? `${this.totales().horasMotor!.toLocaleString('es-CL')} h`
+          : '',
+      ayuda: 'Motor del remolque: horómetro final − inicial.',
+    },
+  ];
+
+  /** Lo indica el conductor: si el motor del remolque funcionó en el flete (se cobra aparte). */
+  readonly opcionesMotor = [
+    { label: 'Con motor', value: true },
+    { label: 'Sin motor', value: false },
   ];
 
   readonly camposGastos: CampoFormulario[] = [
     { campo: 'peajes', etiqueta: 'Peajes', tipo: 'pesos' },
     { campo: 'carga', etiqueta: 'Carga', tipo: 'pesos' },
     { campo: 'descarga', etiqueta: 'Descarga', tipo: 'pesos' },
+    {
+      campo: 'petroleo',
+      etiqueta: 'Petróleo',
+      tipo: 'pesos',
+      ayuda: 'Pagado en ruta con el anticipo.',
+    },
   ];
   private readonly campos = [...this.camposViaje, ...this.camposGastos];
 
@@ -233,8 +265,19 @@ export class Rendicion {
     const c = this.cabecera()!;
     const form = construirFormulario(
       this.campos,
-      d ?? { fecha: hoyIso(), fechaSalida: c.fechaCarga, peajes: 0, carga: 0, descarga: 0 },
+      d ?? {
+        fecha: hoyIso(),
+        fechaSalida: c.fechaCarga,
+        peajes: 0,
+        carga: 0,
+        descarga: 0,
+        petroleo: 0,
+      },
       !!d,
+    );
+    form.addControl(
+      'remolqueConMotor',
+      new FormControl<boolean | null>(d?.remolqueConMotor ?? null),
     );
     const viaticos = new FormArray<FormViatico>(
       (d?.viaticos ?? []).map((v) => this.nuevoViatico({ ...v, fecha: isoADate(v.fecha) })),
@@ -331,6 +374,7 @@ export class Rendicion {
     }
     const entrada = {
       ...aEntrada(this.campos, form),
+      remolqueConMotor: form.get('remolqueConMotor')!.value,
       ordenCargaId: c.id,
       viaticos: viaticos.getRawValue().map((v) => ({ ...v, fecha: dateAIso(v.fecha) })),
       gastos: gastos

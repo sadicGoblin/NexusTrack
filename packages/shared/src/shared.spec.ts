@@ -110,7 +110,28 @@ describe('montos y cálculos', () => {
         viaticos: [{ desayuno: 3000, almuerzo: 6000, comida: 5000 }],
         gastos: [{ monto: 4000 }, { monto: 1000 }],
       }),
-    ).toEqual({ kmRecorridos: 374, totalViaticos: 14000, totalOtrosGastos: 5000, totalGeneral: 41000 });
+    ).toEqual({
+      kmRecorridos: 374,
+      horasMotor: null,
+      totalViaticos: 14000,
+      totalOtrosGastos: 5000,
+      totalGeneral: 41000,
+    });
+  });
+
+  it('suma el petróleo al total y calcula las horas del motor del remolque', () => {
+    const r = calcularRendicion({
+      horometroInicial: 1520.5,
+      horometroFinal: 1532.8,
+      peajes: 10000,
+      petroleo: 45000,
+      viaticos: [],
+      gastos: [],
+    });
+    expect(r).toMatchObject({ horasMotor: 12.3, totalGeneral: 55000 });
+    expect(
+      calcularRendicion({ horometroInicial: 10, horometroFinal: 5, viaticos: [], gastos: [] }).horasMotor,
+    ).toBeNull();
   });
 });
 

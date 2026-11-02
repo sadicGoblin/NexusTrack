@@ -562,12 +562,17 @@ export interface RendicionInput {
   horaLlegada?: Nullable<string>;
   odometroInicial?: Nullable<number>;
   odometroFinal?: Nullable<number>;
+  horometroInicial?: Nullable<number>;
+  horometroFinal?: Nullable<number>;
+  /** Lo indica el conductor: si el motor del remolque funcionó durante el flete. */
+  remolqueConMotor?: Nullable<boolean>;
   observaciones?: Nullable<string>;
   fechaEntrega?: Nullable<Fecha>;
   sitioEntregaId?: Nullable<number>;
   peajes?: Nullable<number>;
   carga?: Nullable<number>;
   descarga?: Nullable<number>;
+  petroleo?: Nullable<number>;
   viaticos: ViaticoInput[];
   gastos: GastoInput[];
 }
@@ -592,6 +597,10 @@ export interface RendicionDto {
   odometroInicial: Nullable<number>;
   odometroFinal: Nullable<number>;
   kmRecorridos: Nullable<number>;
+  horometroInicial: Nullable<number>;
+  horometroFinal: Nullable<number>;
+  horasMotor: Nullable<number>;
+  remolqueConMotor: Nullable<boolean>;
   observaciones: Nullable<string>;
   fechaEntrega: Nullable<Fecha>;
   sitioEntregaId: Nullable<number>;
@@ -599,6 +608,7 @@ export interface RendicionDto {
   peajes: number;
   carga: number;
   descarga: number;
+  petroleo: number;
   totalViaticos: number;
   totalOtrosGastos: number;
   totalGeneral: number;

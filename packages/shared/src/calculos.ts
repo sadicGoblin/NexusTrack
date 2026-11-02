@@ -64,31 +64,48 @@ export function totalViatico(v: EntradaViatico): number {
 export interface EntradaRendicion {
   odometroInicial?: number | null;
   odometroFinal?: number | null;
+  horometroInicial?: number | null;
+  horometroFinal?: number | null;
   peajes?: number | null;
   carga?: number | null;
   descarga?: number | null;
+  petroleo?: number | null;
   viaticos: EntradaViatico[];
   gastos: { monto?: number | null }[];
 }
 
 export interface ResultadoRendicion {
   kmRecorridos: number | null;
+  /** Horas del motor del remolque: horómetro final − inicial. */
+  horasMotor: number | null;
   totalViaticos: number;
   totalOtrosGastos: number;
   totalGeneral: number;
 }
 
+/** Final − inicial si ambos existen y el final no es menor. */
+function diferencia(inicial?: number | null, final?: number | null): number | null {
+  if (inicial === null || inicial === undefined || final === null || final === undefined) return null;
+  return final >= inicial ? final - inicial : null;
+}
+
 export function calcularRendicion(e: EntradaRendicion): ResultadoRendicion {
-  const km =
-    e.odometroInicial !== null &&
-    e.odometroInicial !== undefined &&
-    e.odometroFinal !== null &&
-    e.odometroFinal !== undefined
-      ? e.odometroFinal - e.odometroInicial
-      : null;
+  const km = diferencia(e.odometroInicial, e.odometroFinal);
+  const horas = diferencia(e.horometroInicial, e.horometroFinal);
   const totalViaticos = e.viaticos.reduce((s, v) => s + totalViatico(v), 0);
   const totalOtrosGastos = e.gastos.reduce((s, g) => s + (g.monto || 0), 0);
   const totalGeneral =
-    (e.peajes || 0) + (e.carga || 0) + (e.descarga || 0) + totalViaticos + totalOtrosGastos;
-  return { kmRecorridos: km !== null && km >= 0 ? km : null, totalViaticos, totalOtrosGastos, totalGeneral };
+    (e.peajes || 0) +
+    (e.carga || 0) +
+    (e.descarga || 0) +
+    (e.petroleo || 0) +
+    totalViaticos +
+    totalOtrosGastos;
+  return {
+    kmRecorridos: km,
+    horasMotor: horas === null ? null : redondear(horas, 1),
+    totalViaticos,
+    totalOtrosGastos,
+    totalGeneral,
+  };
 }

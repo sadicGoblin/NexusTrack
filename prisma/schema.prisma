@@ -546,6 +546,12 @@ model Rendicion {
   odometroInicial  Int?
   odometroFinal    Int?
   kmRecorridos     Int?
+  /// Horas de funcionamiento del motor del remolque (thermo), para su rendimiento.
+  horometroInicial Float?
+  horometroFinal   Float?
+  horasMotor       Float?
+  /// Lo indica el conductor: si el motor del remolque funcionó durante el flete (se cobra aparte).
+  remolqueConMotor Boolean?
   observaciones    String?
   fechaEntrega     DateTime?        @db.Date
   sitioEntregaId   Int?
@@ -553,6 +559,8 @@ model Rendicion {
   peajes           Int              @default(0)
   carga            Int              @default(0)
   descarga         Int              @default(0)
+  /// Petróleo pagado en ruta con el anticipo.
+  petroleo         Int              @default(0)
   totalViaticos    Int              @default(0)
   totalOtrosGastos Int              @default(0)
   totalGeneral     Int              @default(0)

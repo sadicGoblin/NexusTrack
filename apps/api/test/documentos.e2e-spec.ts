@@ -507,12 +507,32 @@ describe('Documentos operativos: flujo completo', () => {
           .post('/rendiciones', {
             ordenCargaId: oc.id,
             fecha: '2026-09-12',
-            peajes: 120000,
+            peajes: 100000,
+            petroleo: 20000,
+            horometroInicial: 1520.5,
+            horometroFinal: 1532.8,
+            remolqueConMotor: true,
             viaticos: [],
             gastos: [],
           })
           .expect(201)
       ).body;
+      expect(rd).toMatchObject({
+        petroleo: 20000,
+        horasMotor: 12.3,
+        remolqueConMotor: true,
+        totalGeneral: 120000,
+      });
+      const horometroAlReves = await c.put(`/rendiciones/${rd.id}`, {
+        ordenCargaId: oc.id,
+        fecha: '2026-09-12',
+        horometroInicial: 10,
+        horometroFinal: 5,
+        viaticos: [],
+        gastos: [],
+      });
+      expect(horometroAlReves.status).toBe(400);
+      expect(horometroAlReves.body.message).toMatch(/horómetro final/);
       // Otro flete con anticipo y sin rendir.
       const otra = await nuevaOrdenRetiro('2026-09-11');
       const v3 = await vale(otra.id, 30000);

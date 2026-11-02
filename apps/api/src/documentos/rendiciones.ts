@@ -35,6 +35,8 @@ import {
 } from '../comun/errores.js';
 import { aFecha, aIso, rangoFechas } from '../comun/fechas.js';
 import {
+  Booleano,
+  Decimal,
   Entero,
   Fecha,
   Hora,
@@ -89,6 +91,22 @@ class RendicionDtoIn implements RendicionInput {
   odometroInicial?: number | null;
   @Entero('Odómetro final', { opcional: true, min: 0, max: 99_999_999 })
   odometroFinal?: number | null;
+  @Decimal('Horómetro inicial', {
+    opcional: true,
+    min: 0,
+    max: 9_999_999,
+    decimales: 1,
+  })
+  horometroInicial?: number | null;
+  @Decimal('Horómetro final', {
+    opcional: true,
+    min: 0,
+    max: 9_999_999,
+    decimales: 1,
+  })
+  horometroFinal?: number | null;
+  @Booleano('Motor del remolque', { opcional: true })
+  remolqueConMotor?: boolean | null;
   @Texto('Observaciones', { opcional: true, max: 1000 }) observaciones?:
     string | null;
   @Fecha('Fecha de entrega', { opcional: true }) fechaEntrega?: string | null;
@@ -96,6 +114,7 @@ class RendicionDtoIn implements RendicionInput {
   @Monto('Peajes', { opcional: true }) peajes?: number | null;
   @Monto('Carga', { opcional: true }) carga?: number | null;
   @Monto('Descarga', { opcional: true }) descarga?: number | null;
+  @Monto('Petróleo', { opcional: true }) petroleo?: number | null;
   @Lista('Viáticos', () => ViaticoDtoIn, { max: 60 }) viaticos!: ViaticoDtoIn[];
   @Lista('Otros gastos', () => GastoDtoIn, { max: 200 }) gastos!: GastoDtoIn[];
 }
@@ -145,6 +164,10 @@ function aDto(r: Fila): RendicionDto {
     odometroInicial: r.odometroInicial,
     odometroFinal: r.odometroFinal,
     kmRecorridos: r.kmRecorridos,
+    horometroInicial: r.horometroInicial,
+    horometroFinal: r.horometroFinal,
+    horasMotor: r.horasMotor,
+    remolqueConMotor: r.remolqueConMotor,
     observaciones: r.observaciones,
     fechaEntrega: aIso(r.fechaEntrega),
     sitioEntregaId: r.sitioEntregaId,
@@ -152,6 +175,7 @@ function aDto(r: Fila): RendicionDto {
     peajes: r.peajes,
     carga: r.carga,
     descarga: r.descarga,
+    petroleo: r.petroleo,
     totalViaticos: r.totalViaticos,
     totalOtrosGastos: r.totalOtrosGastos,
     totalGeneral: r.totalGeneral,
@@ -217,6 +241,13 @@ export class RendicionesService {
     ) {
       throw invalido('El odómetro final no puede ser menor que el inicial.');
     }
+    if (
+      dto.horometroInicial != null &&
+      dto.horometroFinal != null &&
+      dto.horometroFinal < dto.horometroInicial
+    ) {
+      throw invalido('El horómetro final no puede ser menor que el inicial.');
+    }
     if (dto.fechaSalida && dto.fechaLlegada) {
       const salida = `${dto.fechaSalida} ${dto.horaSalida ?? '00:00'}`;
       const llegada = `${dto.fechaLlegada} ${dto.horaLlegada ?? '23:59'}`;
@@ -255,12 +286,16 @@ export class RendicionesService {
         horaLlegada: dto.horaLlegada ?? null,
         odometroInicial: dto.odometroInicial ?? null,
         odometroFinal: dto.odometroFinal ?? null,
+        horometroInicial: dto.horometroInicial ?? null,
+        horometroFinal: dto.horometroFinal ?? null,
+        remolqueConMotor: dto.remolqueConMotor ?? null,
         observaciones: dto.observaciones ?? null,
         fechaEntrega: aFecha(dto.fechaEntrega),
         sitioEntregaId: dto.sitioEntregaId ?? null,
         peajes: dto.peajes ?? 0,
         carga: dto.carga ?? 0,
         descarga: dto.descarga ?? 0,
+        petroleo: dto.petroleo ?? 0,
         ...totales,
       },
       viaticos: dto.viaticos.map((v, i) => ({
@@ -479,6 +514,16 @@ export class RendicionesService {
               { etiqueta: 'Packing de carga', valor: r.packingCarga, ancho: 2 },
               { etiqueta: 'Patente camión', valor: r.patenteCamion },
               { etiqueta: 'Patente remolque', valor: r.patenteRemolque },
+              { etiqueta: 'Tipo remolque', valor: r.retiro.tipoRemolque },
+              {
+                etiqueta: 'Motor del remolque',
+                valor:
+                  r.remolqueConMotor === null
+                    ? null
+                    : r.remolqueConMotor
+                      ? 'Con motor'
+                      : 'Sin motor',
+              },
             ],
           },
           seccionRetiro(r.retiro),
@@ -519,6 +564,17 @@ export class RendicionesService {
                 tipo: 'numero',
               },
               {
+                etiqueta: 'Horómetro inicial',
+                valor: r.horometroInicial,
+                tipo: 'decimal',
+              },
+              {
+                etiqueta: 'Horómetro final',
+                valor: r.horometroFinal,
+                tipo: 'decimal',
+              },
+              { etiqueta: 'Total horas', valor: r.horasMotor, tipo: 'decimal' },
+              {
                 etiqueta: 'Fecha de entrega',
                 valor: r.fechaEntrega,
                 tipo: 'fecha',
@@ -532,6 +588,7 @@ export class RendicionesService {
               { etiqueta: 'Peajes', valor: r.peajes, tipo: 'pesos' },
               { etiqueta: 'Carga', valor: r.carga, tipo: 'pesos' },
               { etiqueta: 'Descarga', valor: r.descarga, tipo: 'pesos' },
+              { etiqueta: 'Petróleo', valor: r.petroleo, tipo: 'pesos' },
             ],
           },
         ],

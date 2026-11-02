@@ -125,6 +125,13 @@ a {
   gap: 1rem 1.25rem;
 }
 
+/* Secciones con una columna más (en pantallas angostas vale la regla común de 2 y 1 columnas). */
+@media (min-width: 1101px) {
+  .nt-grilla.nt-grilla-5 {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
 .nt-campo {
   display: flex;
   flex-direction: column;

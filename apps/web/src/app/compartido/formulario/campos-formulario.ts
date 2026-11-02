@@ -11,7 +11,7 @@ import { CampoHora } from './campo-hora';
 import { mensajeError, type CampoFormulario } from './formulario';
 import { RutInput } from './rut';
 
-/** Dibuja los campos de un formulario en una grilla de 4 columnas según su configuración. */
+/** Dibuja los campos de un formulario en una grilla de 4 (o 5) columnas según su configuración. */
 @Component({
   selector: 'nt-campos',
   imports: [
@@ -32,6 +32,7 @@ export class CamposFormulario {
   readonly form = input.required<FormGroup>();
   readonly campos = input.required<CampoFormulario[]>();
   readonly soloLectura = input(false);
+  readonly columnas = input<4 | 5>(4);
 
   error(campo: string): string | null {
     return mensajeError(this.form().get(campo));

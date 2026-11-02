@@ -48,6 +48,23 @@
         <nt-dato etiqueta="Packing de carga" [valor]="c.packingCarga" />
         <nt-dato etiqueta="Patente camión" [valor]="c.patenteCamion" />
         <nt-dato etiqueta="Patente remolque" [valor]="c.patenteRemolque" />
+        <nt-dato etiqueta="Tipo remolque" [valor]="resumen()?.tipoRemolque" />
+        @if (form(); as f) {
+          @if (c.patenteRemolque) {
+            <div class="nt-dato" [formGroup]="f">
+              <span class="etiqueta" id="motor-remolque">Motor del remolque</span>
+              <p-selectbutton
+                formControlName="remolqueConMotor"
+                [options]="opcionesMotor"
+                optionLabel="label"
+                optionValue="value"
+                [allowEmpty]="true"
+                size="small"
+                ariaLabelledBy="motor-remolque"
+              />
+            </div>
+          }
+        }
       </div>
     </section>
   }
@@ -59,7 +76,7 @@
   @if (form(); as f) {
     <section class="nt-tarjeta">
       <div class="nt-tarjeta-titulo"><h2>Viaje</h2></div>
-      <nt-campos [form]="f" [campos]="camposViaje" [soloLectura]="!editable()" />
+      <nt-campos [form]="f" [campos]="camposViaje" [columnas]="5" [soloLectura]="!editable()" />
     </section>
 
     <section class="nt-tarjeta">
@@ -313,7 +330,7 @@
           <span>Kilómetros</span><strong>{{ totales().kmRecorridos | numero }}</strong>
         </div>
         <div class="total">
-          <span>Peajes, carga y descarga</span
+          <span>Peajes, carga, descarga y petróleo</span
           ><strong>{{
             totales().totalGeneral - totales().totalViaticos - totales().totalOtrosGastos | pesos
           }}</strong>

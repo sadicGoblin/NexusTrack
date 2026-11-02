@@ -62,18 +62,24 @@ test('flujo completo de un flete: asignación → retiro → carga → vale → 
   await escribirNumero(page.locator('#c-odometroInicial'), '120000');
   await escribirNumero(page.locator('#c-odometroFinal'), '120374');
   await expect(page.locator('#c-kmRecorridos')).toHaveValue('374 km');
+  await escribirNumero(page.locator('#c-horometroInicial'), '1520,5');
+  await escribirNumero(page.locator('#c-horometroFinal'), '1532,8');
+  await expect(page.locator('#c-horasMotor')).toHaveValue('12,3 h');
+  await page.getByRole('button', { name: 'Con motor' }).click();
   await escribirNumero(page.locator('#c-peajes'), '12000');
+  await escribirNumero(page.locator('#c-petroleo'), '20000');
   await page.getByRole('button', { name: 'Agregar día' }).click();
   await escribirNumero(page.getByLabel('Almuerzo'), '6000');
-  await expect(page.locator('.total.principal').last()).toContainText('$18.000');
+  await expect(page.locator('.total.principal').last()).toContainText('$38.000');
   await page.getByRole('button', { name: 'Emitir' }).click();
   await expect(page.getByRole('heading', { name: /Rendición de fletes\s+N° 000001/ })).toBeVisible();
 
-  // La cuenta del conductor: anticipo $150.000 y gastos $18.000 → $132.000 a favor.
+  // La cuenta del conductor: anticipo $150.000 y gastos $38.000 → $112.000 a favor.
   const cuenta = page.locator('nt-cuenta-conductor');
   await expect(cuenta).toContainText('vale N° 000001');
   await expect(cuenta.locator('.linea.total')).toContainText('a favor del conductor');
-  await expect(cuenta.locator('.linea.total')).toContainText('$132.000');
+  await expect(cuenta.locator('.linea.total')).toContainText('$112.000');
+  await expect(page.getByRole('button', { name: 'Con motor' })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('button', { name: 'Eliminar' })).toBeVisible();
 
   // 6. El documento se descarga en PDF.
