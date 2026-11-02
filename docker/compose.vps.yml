@@ -45,6 +45,8 @@ services:
       COOKIE_SAMESITE: ${COOKIE_SAMESITE:-none}
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@nexustrack.cl}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:?Defina SEED_ADMIN_PASSWORD}
+      # GPS de los camiones (recorrido en la rendición). Sin clave, la rendición avisa que falta.
+      FM_TRACK_API_KEY: ${FM_TRACK_API_KEY:-}
     networks:
       default: {}
       proxy:

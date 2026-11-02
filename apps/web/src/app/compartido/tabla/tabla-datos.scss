@@ -70,6 +70,12 @@ tr.clicable {
   text-align: right;
 }
 
+.fila-totales td {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 .vacio {
   text-align: center;
   padding: 2.5rem 1rem !important;

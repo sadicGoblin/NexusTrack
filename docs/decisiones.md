@@ -162,3 +162,36 @@ ya tiene un Caddy de otro proyecto en los puertos 80 y 443. Por eso:
   sistema operativo: con formato de 12 horas muestra a. m./p. m. y en Safari no trae selector.
 - Si la cabecera de la orden de carga queda sin tramo, se toma el de la primera guía; las órdenes
   emitidas antes sin tramo muestran el de sus guías.
+
+## 14. Informes: control de fletes y órdenes por facturar
+
+- Como la cuenta del conductor, se calculan al vuelo desde los documentos (`/informes/...`), sin
+  tablas propias, y no entran los documentos anulados. Las fórmulas están en
+  `packages/shared/src/informes.ts`, con sus pruebas.
+- **Control de fletes**: una fila por orden de carga, filtrada por la fecha de la orden de retiro.
+  Distancia = km de los odómetros de la rendición; litros y combustible = vales de combustible
+  emitidos; comisiones = valor del flete × % de comisión actual del conductor (no se copia al
+  emitir). Se agregó la columna **Petróleo**, que la planilla del cliente no tenía: es parte del
+  total de la rendición, y sin ella el total de gastos y el saldo no calzarían con la rendición ni
+  con la cuenta del conductor. Totales: sumas, y los rendimientos y la rentabilidad del conjunto.
+- **Órdenes por facturar**: órdenes de carga con guías, rendidas o no, filtradas por fecha de
+  carga. No hay marca de «facturada»: el informe es por período. Las guías de una orden con la
+  misma tarifa (tramo, unidad y valor) van en una línea con sus números separados por guion,
+  como pidió el cliente; con tarifas distintas, una línea por tarifa.
+- La grilla acepta una fila de totales (`totales`) que se muestra al pie y se exporta. Los PDF
+  con muchas columnas se achican hasta 60 % para caber en A4 horizontal.
+
+## 15. Recorrido GPS en la rendición
+
+- El GPS de los camiones es fm-track (Ruptela), el mismo de la plataforma de integraciones GPS
+  (track-gps). La API lo consulta directamente con `FM_TRACK_API_KEY`: no depende de ese otro
+  proyecto ni de su base, que guarda solo 15 días de posiciones, y las rendiciones se revisan
+  semanas después del viaje.
+- Solo historial: `GET /recorridos?patente&desde&hasta` (hora de Chile) lee las posiciones del
+  período (hasta 10 días, en páginas de 1.000) y las resume en viajes y paradas con el mismo
+  análisis del mapa de track-gps (`apps/api/src/recorridos/analisis.ts`). No se guarda nada; las
+  consultas recientes quedan 5 minutos en memoria.
+- El camión se busca por patente dentro del nombre del vehículo en fm-track («CDSP97, Luis
+  Gaete»), porque en fm-track la patente oficial suele venir vacía.
+- La rendición lo abre en un diálogo con los datos del formulario, aunque no estén guardados:
+  así se revisa mientras se ingresa. Leaflet se carga recién al abrir el diálogo.

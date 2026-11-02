@@ -25,6 +25,11 @@ export const routes: Routes = [
           import('./paginas/documentos/documentos.routes').then((m) => m.rutasDocumentos),
       },
       {
+        path: 'informes',
+        loadChildren: () =>
+          import('./paginas/informes/informes.routes').then((m) => m.rutasInformes),
+      },
+      {
         path: 'mantenedores',
         loadChildren: () =>
           import('./paginas/mantenedores/mantenedores.routes').then((m) => m.rutasMantenedores),

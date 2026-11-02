@@ -3,6 +3,7 @@ import { alinearDerecha, escaparHtml as e, formatear } from './formato.js';
 import type {
   DatosEmisor,
   DocumentoImprimible,
+  InformeImprimible,
   TablaImprimible,
 } from './tipos.js';
 
@@ -27,6 +28,7 @@ const ESTILOS = `
   th { background: #0f4c81; color: #fff; font-weight: 600; text-align: left; padding: 5px 6px; font-size: 9px; }
   td { padding: 4px 6px; border-bottom: 1px solid #e4e7eb; font-size: 9.5px; vertical-align: top; }
   tr:nth-child(even) td { background: #f5f7fa; }
+  tfoot td { font-weight: 700; border-top: 1.5px solid #0f4c81; border-bottom: none; background: none !important; }
   .der { text-align: right; white-space: nowrap; }
   .totales { margin-top: 6px; margin-left: auto; width: 45%; }
   .totales td { border: none; padding: 3px 6px; background: none !important; }
@@ -66,7 +68,8 @@ function encabezado(
   </div>`;
 }
 
-function tabla(t: TablaImprimible): string {
+/** Tabla con fila de totales opcional al pie (`pie`, por campo) y totales sueltos debajo. */
+function tabla(t: TablaImprimible, pie?: Record<string, unknown>): string {
   const filas = t.filas
     .map(
       (f) =>
@@ -91,6 +94,22 @@ function tabla(t: TablaImprimible): string {
   <table>
     <thead><tr>${t.columnas.map((c) => `<th class="${alinearDerecha(c.tipo) ? 'der' : ''}">${e(c.titulo)}</th>`).join('')}</tr></thead>
     <tbody>${filas || `<tr><td colspan="${t.columnas.length}" style="text-align:center;color:#7b8794">Sin registros</td></tr>`}</tbody>
+    ${
+      pie
+        ? `<tfoot><tr>${t.columnas
+            .map((c, i) => {
+              const v = pie[c.campo];
+              const texto =
+                v === undefined || v === null
+                  ? i === 0
+                    ? 'Total'
+                    : ''
+                  : formatear(v, c.tipo);
+              return `<td class="${alinearDerecha(c.tipo) ? 'der' : ''}">${e(texto)}</td>`;
+            })
+            .join('')}</tr></tfoot>`
+        : ''
+    }
   </table>
   ${totales}`;
 }
@@ -124,7 +143,7 @@ export function htmlDocumento(
     ${encabezado(emisor, doc.titulo, String(doc.numero).padStart(6, '0'), `Fecha: ${formatear(doc.fecha, 'fecha')} · Generado: ${generado}`, doc.estado, anulado)}
     ${anulado ? `<div class="anulado-banda">DOCUMENTO ANULADO${doc.anulado?.motivo ? ` · Motivo: ${e(doc.anulado.motivo)}` : ''}</div>` : ''}
     ${secciones}
-    ${doc.tablas.map(tabla).join('')}
+    ${doc.tablas.map((t) => tabla(t)).join('')}
     ${doc.observaciones ? `<h2>Observaciones</h2><div class="obs">${e(doc.observaciones)}</div>` : ''}
     ${doc.firmas?.length ? `<div class="firmas">${doc.firmas.map((f) => `<div class="firma">${e(f)}</div>`).join('')}</div>` : ''}
   `);
@@ -139,6 +158,26 @@ export function htmlListado(
     ${encabezado(emisor, input.titulo, null, `Generado: ${generado}`)}
     ${input.subtitulo ? `<div class="resumen">${e(input.subtitulo)}</div>` : ''}
     <div class="resumen">${input.filas.length} registro(s)</div>
-    ${tabla({ columnas: input.columnas, filas: input.filas })}
+    ${tabla({ columnas: input.columnas, filas: input.filas }, input.totales)}
+  `);
+}
+
+export function htmlInforme(
+  informe: InformeImprimible,
+  emisor: DatosEmisor,
+  generado: string,
+): string {
+  return pagina(`
+    ${encabezado(emisor, informe.titulo, null, `Generado: ${generado}`)}
+    <div class="grilla">
+      ${informe.datos
+        .map(
+          (d) => `<div class="campo" style="grid-column: span 2">
+            <div class="etq">${e(d.etiqueta)}</div><div class="val">${e(formatear(d.valor, d.tipo)) || '&nbsp;'}</div>
+          </div>`,
+        )
+        .join('')}
+    </div>
+    ${tabla({ columnas: informe.columnas, filas: informe.filas, totales: informe.totales })}
   `);
 }

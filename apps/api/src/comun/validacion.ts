@@ -229,6 +229,31 @@ export function Hora(etiqueta: string, o: Opciones = {}) {
   );
 }
 
+const FECHA_HORA = /^(\d{4}-\d{2}-\d{2})T([01]\d|2[0-3]):[0-5]\d$/;
+
+/** Fecha y hora local "AAAA-MM-DDTHH:mm". */
+export function FechaHora(etiqueta: string, o: Opciones = {}) {
+  return applyDecorators(
+    documentar(o, { type: String, example: '2026-10-20T08:30' }),
+    Transform(({ value }) => vacioANulo(value)),
+    ...siOpcional(o),
+    ValidateBy(
+      {
+        name: 'fechaHora',
+        validator: {
+          validate: (v) =>
+            typeof v === 'string' &&
+            FECHA_HORA.test(v) &&
+            esFechaIso(v.slice(0, 10)),
+        },
+      },
+      {
+        message: `${etiqueta} debe ser una fecha y hora válidas (AAAA-MM-DDTHH:mm).`,
+      },
+    ),
+  );
+}
+
 export function Booleano(etiqueta: string, o: Opciones = {}) {
   return applyDecorators(
     documentar(o, { type: Boolean }),

@@ -27,6 +27,8 @@ import { ValesCombustibleModule } from './documentos/vales-combustible.js';
 import { RendicionesModule } from './documentos/rendiciones.js';
 import { InicioModule } from './inicio/inicio.js';
 import { CuentasModule } from './cuentas/cuentas.js';
+import { InformesModule } from './informes/informes.js';
+import { RecorridosModule } from './recorridos/recorridos.js';
 
 @Module({
   imports: [
@@ -60,6 +62,8 @@ import { CuentasModule } from './cuentas/cuentas.js';
     ValesCombustibleModule,
     RendicionesModule,
     CuentasModule,
+    InformesModule,
+    RecorridosModule,
     InicioModule,
   ],
   controllers: [SaludController],

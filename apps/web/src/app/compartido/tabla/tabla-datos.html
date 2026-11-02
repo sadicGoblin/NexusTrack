@@ -71,24 +71,26 @@
         appendTo="body"
         size="small"
       />
-      <p-button
-        icon="pi pi-file-excel"
-        label="Excel"
-        severity="secondary"
-        [outlined]="true"
-        size="small"
-        [loading]="exportando() === 'xlsx'"
-        (onClick)="exportar('xlsx')"
-      />
-      <p-button
-        icon="pi pi-file-pdf"
-        label="PDF"
-        severity="secondary"
-        [outlined]="true"
-        size="small"
-        [loading]="exportando() === 'pdf'"
-        (onClick)="exportar('pdf')"
-      />
+      @if (exportable()) {
+        <p-button
+          icon="pi pi-file-excel"
+          label="Excel"
+          severity="secondary"
+          [outlined]="true"
+          size="small"
+          [loading]="exportando() === 'xlsx'"
+          (onClick)="exportar('xlsx')"
+        />
+        <p-button
+          icon="pi pi-file-pdf"
+          label="PDF"
+          severity="secondary"
+          [outlined]="true"
+          size="small"
+          [loading]="exportando() === 'pdf'"
+          (onClick)="exportar('pdf')"
+        />
+      }
     </div>
   </ng-template>
 
@@ -245,6 +247,41 @@
         </td>
       }
     </tr>
+  </ng-template>
+
+  <ng-template #footer let-columnas>
+    @if (filaTotales(); as t) {
+      @if (total()) {
+        <tr class="fila-totales">
+          @for (c of columnas; track c.campo; let primera = $first) {
+            <td [class.nt-derecha]="esNumerica(c)">
+              @let v = t[c.campo];
+              @if (v === null || v === undefined) {
+                {{ primera ? 'Total' : '' }}
+              } @else {
+                @switch (c.tipo) {
+                  @case ('pesos') {
+                    {{ $any(v) | pesos }}
+                  }
+                  @case ('decimal') {
+                    {{ $any(v) | numero: 1 }}
+                  }
+                  @case ('porcentaje') {
+                    {{ $any(v) | porcentaje }}
+                  }
+                  @default {
+                    {{ $any(v) | numero }}
+                  }
+                }
+              }
+            </td>
+          }
+          @if (acciones()) {
+            <td class="col-acciones"></td>
+          }
+        </tr>
+      }
+    }
   </ng-template>
 
   <ng-template #emptymessage let-columnas>

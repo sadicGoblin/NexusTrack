@@ -632,4 +632,157 @@ describe('Documentos operativos: flujo completo', () => {
       ]);
     });
   });
+
+  it('calcula el control de fletes y las órdenes por facturar del período', async () => {
+    const or = await nuevaOrdenRetiro('2026-08-05');
+    const oc = (
+      await c
+        .post('/ordenes-carga', {
+          ordenRetiroId: or.id,
+          tramoId: rutas.contenedor,
+          fechaCarga: '2026-08-06',
+          guias: [
+            guia(rutas.contenedor, 'VIAJE'),
+            { ...guia(rutas.contenedor, 'VIAJE'), numeroGuia: '7350' },
+            guia(rutas.underslung, 'UNDERSLUNG'),
+          ],
+        })
+        .expect(201)
+    ).body;
+    const vale = (
+      await c
+        .post('/vales-dinero', {
+          ordenRetiroId: or.id,
+          fechaEntrega: '2026-08-05',
+          sitioEntregaId: id('SITIO_ENTREGA', 'CURICO'),
+          monto: 150000,
+          formaPagoId: id('FORMA_PAGO', 'EFECTIVO'),
+        })
+        .expect(201)
+    ).body;
+    await c
+      .post('/vales-combustible', {
+        ordenRetiroId: or.id,
+        fechaEntrega: '2026-08-07',
+        sitioEntregaId: id('SITIO_ENTREGA', 'SAN ANTONIO'),
+        camionId: or.camionId,
+        remolqueId: or.remolqueId,
+        numeralInicialCamion: 1000,
+        numeralFinalCamion: 1150,
+        numeralInicialRemolque: 50,
+        numeralFinalRemolque: 74,
+        valorLitro: 1000,
+      })
+      .expect(201);
+    const rendicion = (
+      await c
+        .post('/rendiciones', {
+          ordenCargaId: oc.id,
+          fecha: '2026-08-08',
+          fechaSalida: '2026-08-06',
+          fechaLlegada: '2026-08-07',
+          odometroInicial: 1000,
+          odometroFinal: 1450,
+          horometroInicial: 100,
+          horometroFinal: 112,
+          peajes: 12000,
+          carga: 5000,
+          descarga: 5000,
+          petroleo: 20000,
+          viaticos: [{ fecha: '2026-08-06', almuerzo: 6000 }],
+          gastos: [{ monto: 4000 }],
+        })
+        .expect(201)
+    ).body;
+    const conductor = (
+      await c.get(`/conductores/${base.conductor}`).expect(200)
+    ).body;
+    const comisiones = Math.round(oc.totalNeto * (conductor.comision ?? 0));
+
+    const periodo = '?desde=2026-08-01&hasta=2026-08-31';
+    const control = (
+      await c.get(`/informes/control-fletes${periodo}`).expect(200)
+    ).body;
+    expect(control).toHaveLength(1);
+    expect(control[0]).toMatchObject({
+      id: oc.id,
+      estado: 'RENDIDA',
+      ordenRetiro: or.numero,
+      rendicion: rendicion.numero,
+      fechaInicio: '2026-08-06',
+      fechaTermino: '2026-08-07',
+      numerosAnticipo: String(vale.numero).padStart(6, '0'),
+      distancia: 450,
+      litrosCamion: 150,
+      kmPorLitro: 3,
+      horometro: 12,
+      litrosRemolque: 24,
+      litrosPorHora: 2,
+      anticipo: 150000,
+      cargaDescarga: 10000,
+      petroleo: 20000,
+      totalGastos: 52000,
+      saldo: 98000,
+      combustible: 174000,
+      comisiones,
+      costoTotal: 226000 + comisiones,
+      valorFlete: oc.totalNeto,
+      margen: oc.totalNeto - 226000 - comisiones,
+    });
+    expect(
+      (
+        await c
+          .get(`/informes/control-fletes${periodo}&clienteId=${base.propal}`)
+          .expect(200)
+      ).body,
+    ).toEqual([]);
+
+    const resumen = (await c.get(`/informes/facturacion${periodo}`).expect(200))
+      .body;
+    expect(resumen).toEqual([
+      expect.objectContaining({
+        clienteId: base.cliente,
+        ordenes: 1,
+        guias: 3,
+        total: oc.totalNeto,
+      }),
+    ]);
+    const informe = (
+      await c.get(`/informes/facturacion/${base.cliente}${periodo}`).expect(200)
+    ).body;
+    expect(informe.total).toBe(oc.totalNeto);
+    expect(
+      informe.lineas.map((l: { guias: string; cantidadTarifa: number }) => [
+        l.guias,
+        l.cantidadTarifa,
+      ]),
+    ).toEqual([
+      ['7349 - 7350', 2],
+      ['7349', 1],
+    ]);
+
+    const pdf = await c
+      .get(`/informes/facturacion/${base.cliente}/pdf${periodo}`)
+      .expect(200);
+    expect(pdf.headers['content-type']).toBe('application/pdf');
+    expect(pdf.headers['content-disposition']).toMatch(
+      /por-facturar-coexca-s-a-2026-08-01-2026-08-31\.pdf/,
+    );
+    const xlsx = await c
+      .get(`/informes/facturacion/${base.cliente}/xlsx${periodo}`)
+      .expect(200);
+    expect(xlsx.headers['content-type']).toMatch(/spreadsheetml/);
+    await c
+      .post('/exportacion/tabla', {
+        titulo: 'Control de fletes',
+        formato: 'pdf',
+        columnas: [
+          { campo: 'conductor', titulo: 'Conductor' },
+          { campo: 'margen', titulo: 'Margen', tipo: 'pesos' },
+        ],
+        filas: control,
+        totales: { margen: control[0].margen },
+      })
+      .expect(201);
+  });
 });

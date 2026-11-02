@@ -100,6 +100,37 @@ test('flujo completo de un flete: asignación → retiro → carga → vale → 
   await expect(page.getByRole('row', { name: /Creó.*Rendición.*N° 000001/ }).first()).toBeVisible();
 });
 
+test('los informes muestran el flete del mes y la rendición abre su recorrido GPS', async ({ page }) => {
+  await ingresar(page);
+  // Control de fletes: el flete rendido del mes con sus costos, margen y exportación.
+  await page.goto('/informes/control-fletes');
+  await expect(page.getByText('Rendidos (1)')).toBeVisible();
+  await expect(page.getByRole('row', { name: /FERNANDO/ })).toBeVisible();
+  await expect(page.locator('.cifra').first()).toContainText('$565.000');
+  const control = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'PDF' }).click();
+  expect((await control).suggestedFilename()).toBe('control-de-fletes.pdf');
+
+  // Órdenes por facturar: total por cliente y, al elegirlo, su informe.
+  await page.goto('/informes/facturacion');
+  await page.getByRole('row', { name: /COEXCA/ }).click();
+  await expect(page.getByText('Informe órdenes de carga por facturar')).toBeVisible();
+  await expect(page.getByRole('row', { name: /7349/ })).toBeVisible();
+  const informe = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'PDF' }).click();
+  expect((await informe).suggestedFilename()).toMatch(/^por-facturar-coexca-s-a-.*\.pdf$/);
+
+  // Recorrido GPS sin salir de la rendición: en pruebas no hay clave de fm-track y lo avisa.
+  await page.goto('/operacion/rendiciones');
+  await page
+    .getByRole('row', { name: /000001/ })
+    .first()
+    .click();
+  await page.getByRole('button', { name: 'Recorrido GPS' }).click();
+  await expect(page.locator('.leaflet-container')).toBeVisible();
+  await expect(page.getByText('El GPS no está configurado')).toBeVisible();
+});
+
 test('los botones de estado filtran el listado con un clic y se recuerdan', async ({ page }) => {
   await ingresar(page);
   await page.goto('/operacion/ordenes-retiro');

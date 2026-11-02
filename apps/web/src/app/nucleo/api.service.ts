@@ -1,4 +1,4 @@
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpContext, HttpContextToken, HttpParams } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { firstValueFrom } from 'rxjs';
 import { API_BASE } from './config';
@@ -6,14 +6,20 @@ import type { ExportarTablaInput } from '@nexustrack/shared';
 
 type Parametros = Record<string, string | number | boolean | null | undefined>;
 
+/** La pantalla muestra el error por su cuenta: el interceptor no levanta el aviso general. */
+export const SIN_AVISO = new HttpContextToken<boolean>(() => false);
+
 /** Acceso tipado a la API REST. Las rutas son relativas a la base de la API (ver config.ts). */
 @Injectable({ providedIn: 'root' })
 export class ApiService {
   private readonly http = inject(HttpClient);
 
-  get<T>(ruta: string, parametros?: Parametros): Promise<T> {
+  get<T>(ruta: string, parametros?: Parametros, opciones: { sinAviso?: boolean } = {}): Promise<T> {
     return firstValueFrom(
-      this.http.get<T>(`${API_BASE}/${ruta}`, { params: this.params(parametros) }),
+      this.http.get<T>(`${API_BASE}/${ruta}`, {
+        params: this.params(parametros),
+        context: new HttpContext().set(SIN_AVISO, !!opciones.sinAviso),
+      }),
     );
   }
 

@@ -114,6 +114,19 @@ en GitHub qué le falta. Si se publica con cambios sin commit, el código lleva 
 Las pantallas que editan sin formulario (como Parámetros) marcan lo pendiente con la clase
 `nt-sin-guardar` para que el aviso lo detecte.
 
+## Recorrido GPS (fm-track)
+
+La rendición muestra el recorrido del camión entre la salida y la llegada, leído de fm-track
+(Ruptela), el GPS de los camiones. La API lo consulta con la clave `FM_TRACK_API_KEY` de
+`.env.vps`; sin ella, el diálogo avisa que el GPS no está configurado y el resto funciona igual.
+
+1. Un administrador de la cuenta fm-track genera la clave en el portal de fm-track.
+2. En el VPS, agréguela a `/opt/nexustrack/.env.vps` (`FM_TRACK_API_KEY=...`).
+3. Vuelva a levantar la API: `VPS=root@2.25.132.42 npm run deploy:api`.
+
+El camión se busca por patente en el nombre del vehículo en fm-track (por ejemplo
+«CDSP97, Luis Gaete»). Solo se leen posiciones históricas; NexusTrack no guarda nada del GPS.
+
 ## Importar listados de conductores y equipos
 
 `prisma/importar-listado.ts` carga o actualiza Móviles, Conductores y Asignaciones desde una

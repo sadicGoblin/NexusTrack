@@ -3,6 +3,7 @@ import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { MessageService } from 'primeng/api';
 import { catchError, from, switchMap, throwError } from 'rxjs';
+import { SIN_AVISO } from './api.service';
 import { API_BASE } from './config';
 import { SesionService, SIN_RENOVAR } from './sesion.service';
 
@@ -48,6 +49,7 @@ export const interceptorErrores: HttpInterceptorFn = (req, next) => {
       if (
         error instanceof HttpErrorResponse &&
         !req.context.get(SIN_RENOVAR) &&
+        !req.context.get(SIN_AVISO) &&
         error.status !== 401
       ) {
         void avisar(mensajes, error);

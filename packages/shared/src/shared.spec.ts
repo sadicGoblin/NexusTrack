@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   calcularCombustible,
   calcularDvRut,
+  calcularControlFlete,
   calcularRendicion,
+  comisionFlete,
   esFechaIso,
   esRutValido,
   formatearFecha,
@@ -19,6 +21,7 @@ import {
   tienePermiso,
   type FleteSinCalcular,
   totalNetoGuias,
+  totalesControlFletes,
 } from './index.js';
 
 describe('RUT', () => {
@@ -210,5 +213,65 @@ describe('cuenta del conductor', () => {
     expect(sentidoSaldo(10000)).toBe('a favor del conductor');
     expect(sentidoSaldo(-1)).toBe('en contra del conductor');
     expect(sentidoSaldo(0)).toBe('sin saldo');
+  });
+});
+
+describe('control de fletes', () => {
+  const datos = {
+    distancia: 500,
+    litrosCamion: 200,
+    litrosRemolque: 30,
+    horometro: 12,
+    anticipo: 150000,
+    peajes: 20000,
+    viatico: 14000,
+    cargaDescarga: 10000,
+    petroleo: 45000,
+    otrosGastos: 5000,
+    combustible: 230000,
+    comisiones: 45200,
+    valorFlete: 565000,
+  };
+
+  it('aplica las fórmulas de la planilla del cliente', () => {
+    expect(calcularControlFlete(datos)).toEqual({
+      kmPorLitro: 2.5,
+      litrosPorHora: 2.5,
+      totalGastos: 94000,
+      saldo: 56000,
+      costoTotal: 369200,
+      margen: 195800,
+      rentabilidad: 0.3465,
+    });
+  });
+
+  it('deja vacíos los rendimientos sin datos y la rentabilidad sin valor del flete', () => {
+    expect(calcularControlFlete({ ...datos, distancia: null, horometro: 0, valorFlete: 0 })).toMatchObject({
+      kmPorLitro: null,
+      litrosPorHora: null,
+      rentabilidad: null,
+    });
+  });
+
+  it('calcula la comisión con el % del conductor', () => {
+    expect(comisionFlete(565000, 0.08)).toBe(45200);
+    expect(comisionFlete(565000, null)).toBe(0);
+  });
+
+  it('totaliza con rendimientos y rentabilidad del conjunto', () => {
+    const fila = (d: typeof datos) => ({ ...d, ...calcularControlFlete(d) });
+    const t = totalesControlFletes([
+      fila(datos),
+      fila({ ...datos, distancia: null, litrosCamion: 100, valorFlete: 435000 }),
+    ]);
+    expect(t).toMatchObject({
+      distancia: 500,
+      litrosCamion: 300,
+      kmPorLitro: 2.5,
+      litrosPorHora: 2.5,
+      valorFlete: 1000000,
+      margen: 261600,
+      rentabilidad: 0.2616,
+    });
   });
 });

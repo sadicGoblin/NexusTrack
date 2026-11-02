@@ -5,7 +5,12 @@ import type {
   ExportarTablaInput,
   TipoColumna,
 } from '@nexustrack/shared';
-import type { DatosEmisor, DocumentoImprimible } from './tipos.js';
+import type {
+  DatosEmisor,
+  DocumentoImprimible,
+  InformeImprimible,
+  TablaImprimible,
+} from './tipos.js';
 
 const AZUL = 'FF0F4C81';
 const FUENTE = 'Arial';
@@ -118,6 +123,18 @@ export class ExcelService {
     });
   }
 
+  /** Totales de una tabla bajo sus dos últimas columnas: etiqueta y valor. */
+  private totales(hoja: ExcelJS.Worksheet, t: TablaImprimible): void {
+    for (const total of t.totales ?? []) {
+      const fila = hoja.addRow([]);
+      fila.getCell(Math.max(t.columnas.length - 1, 1)).value = total.etiqueta;
+      const celda = fila.getCell(t.columnas.length);
+      celda.value = valorCelda(total.valor, total.tipo);
+      celda.numFmt = (total.tipo && FORMATOS[total.tipo]) || 'General';
+      fila.font = { name: FUENTE, bold: true };
+    }
+  }
+
   async listado(
     input: ExportarTablaInput,
     emisor: DatosEmisor,
@@ -135,7 +152,53 @@ export class ExcelService {
       input.columnas.length,
     );
     this.tabla(hoja, input.columnas, input.filas, true);
+    if (input.totales) {
+      const totales = input.totales;
+      const fila = hoja.addRow(
+        input.columnas.map((c, i) =>
+          totales[c.campo] === undefined || totales[c.campo] === null
+            ? i === 0
+              ? 'Total'
+              : null
+            : valorCelda(totales[c.campo], c.tipo),
+        ),
+      );
+      fila.font = { name: FUENTE, bold: true };
+      input.columnas.forEach((c, i) => {
+        const formato = c.tipo ? FORMATOS[c.tipo] : undefined;
+        if (formato) fila.getCell(i + 1).numFmt = formato;
+        fila.getCell(i + 1).border = {
+          top: { style: 'medium', color: { argb: AZUL } },
+        };
+      });
+    }
     hoja.views = [{ state: 'frozen', ySplit: 5 }];
+    return Buffer.from(await libro.xlsx.writeBuffer());
+  }
+
+  async informe(
+    informe: InformeImprimible,
+    emisor: DatosEmisor,
+    generado: string,
+  ): Promise<Buffer> {
+    const libro = this.libro();
+    const hoja = libro.addWorksheet(informe.titulo.slice(0, 31));
+    this.encabezado(
+      hoja,
+      emisor,
+      informe.titulo,
+      `Generado: ${generado}`,
+      informe.columnas.length,
+    );
+    for (const d of informe.datos) {
+      const fila = hoja.addRow([`${d.etiqueta}:`, valorCelda(d.valor, d.tipo)]);
+      fila.getCell(1).font = { name: FUENTE, bold: true, size: 10 };
+      fila.getCell(2).font = { name: FUENTE, size: 10 };
+    }
+    hoja.addRow([]);
+    this.tabla(hoja, informe.columnas, informe.filas, false);
+    this.totales(hoja, informe);
+    hoja.getColumn(1).width = Math.max(hoja.getColumn(1).width ?? 0, 22);
     return Buffer.from(await libro.xlsx.writeBuffer());
   }
 
@@ -186,14 +249,7 @@ export class ExcelService {
           color: { argb: AZUL },
         };
       this.tabla(hoja, t.columnas, t.filas, false);
-      for (const total of t.totales ?? []) {
-        const fila = hoja.addRow([]);
-        fila.getCell(Math.max(t.columnas.length - 1, 1)).value = total.etiqueta;
-        const celda = fila.getCell(t.columnas.length);
-        celda.value = valorCelda(total.valor, total.tipo);
-        celda.numFmt = (total.tipo && FORMATOS[total.tipo]) || 'General';
-        fila.font = { name: FUENTE, bold: true };
-      }
+      this.totales(hoja, t);
       hoja.addRow([]);
     }
     if (doc.observaciones) {

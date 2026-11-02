@@ -132,6 +132,10 @@ export class TablaDatos {
   readonly claveEstado = input<string>('');
   readonly filasPorPagina = input(25);
   readonly clicable = input(true);
+  /** Calcula la fila de totales (por campo) de las filas visibles: va al pie y a la exportación. */
+  readonly totales = input<((filas: any[]) => Record<string, unknown>) | null>(null);
+  /** Muestra los botones de Excel y PDF; se apagan si la página tiene su propia exportación. */
+  readonly exportable = input(true);
 
   readonly seleccionar = output<any>();
 
@@ -143,6 +147,8 @@ export class TablaDatos {
   readonly exportando = signal<'pdf' | 'xlsx' | null>(null);
   private readonly visiblesElegidas = signal<string[] | null>(null);
   readonly cantidadFiltrada = signal<number | null>(null);
+  /** Filas que dejan la búsqueda y los filtros; null si no hay ninguno activo. */
+  private readonly filtradas = signal<object[] | null>(null);
   readonly herramientas = herramientasActivas.asReadonly();
   readonly ordenada = signal(false);
   private readonly conFiltrosDeColumna = signal(false);
@@ -201,6 +207,11 @@ export class TablaDatos {
 
   readonly total = computed(() => this.filas().length);
 
+  readonly filaTotales = computed(() => {
+    const calcular = this.totales();
+    return calcular ? calcular(this.filtradas() ?? this.filas()) : null;
+  });
+
   constructor() {
     // Al apagar el orden y los filtros (aquí o en otra grilla abierta) no deben quedar filas
     // ocultas ni reordenadas sin que se vea por qué.
@@ -258,9 +269,9 @@ export class TablaDatos {
       );
     });
     this.conFiltrosDeColumna.set(conFiltros);
-    this.cantidadFiltrada.set(
-      conFiltros || this.busqueda() ? (evento.filteredValue?.length ?? null) : null,
-    );
+    const filtrando = conFiltros || !!this.busqueda();
+    this.cantidadFiltrada.set(filtrando ? (evento.filteredValue?.length ?? null) : null);
+    this.filtradas.set(filtrando ? ((evento.filteredValue as object[]) ?? null) : null);
   }
 
   /** Quita la búsqueda, los filtros y el orden: las filas vuelven a como llegaron. */
@@ -284,6 +295,7 @@ export class TablaDatos {
     this.reinicio.update((n) => n + 1);
     this.ordenada.set(false);
     this.conFiltrosDeColumna.set(false);
+    this.filtradas.set(null);
   }
 
   elegirColumnas(campos: string[]): void {
@@ -337,6 +349,7 @@ export class TablaDatos {
         formato,
         columnas,
         filas: planas,
+        totales: this.filaTotales() ?? undefined,
       });
     } finally {
       this.exportando.set(null);

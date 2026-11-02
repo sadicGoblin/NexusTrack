@@ -675,4 +675,6 @@ export interface ExportarTablaInput {
   formato: FormatoExportacion;
   columnas: ColumnaExportacion[];
   filas: Record<string, unknown>[];
+  /** Fila de totales al pie, por campo. */
+  totales?: Record<string, unknown>;
 }

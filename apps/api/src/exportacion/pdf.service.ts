@@ -39,7 +39,12 @@ export class PdfService implements OnModuleDestroy {
     return this.navegador;
   }
 
-  async desdeHtml(html: string, horizontal = false): Promise<Buffer> {
+  /** `escala` (0,1 a 1) achica el contenido para que quepan tablas muy anchas. */
+  async desdeHtml(
+    html: string,
+    horizontal = false,
+    escala = 1,
+  ): Promise<Buffer> {
     const navegador = await this.obtenerNavegador();
     const pagina = await navegador.newPage();
     try {
@@ -47,6 +52,7 @@ export class PdfService implements OnModuleDestroy {
       const pdf = await pagina.pdf({
         format: 'A4',
         landscape: horizontal,
+        scale: escala,
         printBackground: true,
         margin: { top: '14mm', bottom: '16mm', left: '12mm', right: '12mm' },
         displayHeaderFooter: true,

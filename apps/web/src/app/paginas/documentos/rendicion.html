@@ -75,9 +75,30 @@
 
   @if (form(); as f) {
     <section class="nt-tarjeta">
-      <div class="nt-tarjeta-titulo"><h2>Viaje</h2></div>
+      <div class="nt-tarjeta-titulo">
+        <h2>Viaje</h2>
+        <p-button
+          label="Recorrido GPS"
+          icon="pi pi-map"
+          size="small"
+          [outlined]="true"
+          [disabled]="!salidaGps()"
+          (onClick)="mostrarRecorrido.set(true)"
+          pTooltip="Ruta, viajes y paradas del camión entre la salida y la llegada"
+          tooltipPosition="left"
+        />
+      </div>
       <nt-campos [form]="f" [campos]="camposViaje" [columnas]="5" [soloLectura]="!editable()" />
     </section>
+    @if (salidaGps(); as salida) {
+      <nt-recorrido-gps
+        [(visible)]="mostrarRecorrido"
+        [patente]="cabecera()?.patenteCamion ?? ''"
+        [salida]="salida"
+        [llegada]="llegadaGps()"
+        [kmRendidos]="totales().kmRecorridos"
+      />
+    }
 
     <section class="nt-tarjeta">
       <div class="nt-tarjeta-titulo"><h2>Detalle de gastos</h2></div>

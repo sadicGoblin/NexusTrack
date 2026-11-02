@@ -38,6 +38,21 @@ export const MENU: GrupoMenu[] = [
     ],
   },
   {
+    titulo: 'Informes',
+    items: [
+      {
+        etiqueta: 'Control de fletes',
+        icono: 'pi pi-chart-line',
+        ruta: '/informes/control-fletes',
+      },
+      {
+        etiqueta: 'Órdenes por facturar',
+        icono: 'pi pi-dollar',
+        ruta: '/informes/facturacion',
+      },
+    ],
+  },
+  {
     titulo: 'Mantenedores',
     items: [
       { etiqueta: 'Asignaciones', icono: 'pi pi-link', ruta: '/mantenedores/asignaciones' },

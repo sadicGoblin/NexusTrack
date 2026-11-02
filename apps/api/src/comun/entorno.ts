@@ -12,6 +12,9 @@ export interface Entorno {
   CORS_ORIGIN: string;
   /** strict (web y API en el mismo sitio), lax, o none si la web está en otro sitio (exige HTTPS). */
   COOKIE_SAMESITE: 'strict' | 'lax' | 'none';
+  /** Clave de la API de fm-track (GPS de los camiones). Sin ella no se muestran recorridos. */
+  FM_TRACK_API_KEY: string;
+  FM_TRACK_BASE_URL: string;
 }
 
 export function validarEntorno(config: Record<string, unknown>): Entorno {
@@ -50,5 +53,9 @@ export function validarEntorno(config: Record<string, unknown>): Entorno {
     JWT_REFRESH_TTL_DIAS: Number(config['JWT_REFRESH_TTL_DIAS'] ?? 7),
     CORS_ORIGIN: String(config['CORS_ORIGIN'] ?? ''),
     COOKIE_SAMESITE: sameSite as Entorno['COOKIE_SAMESITE'],
+    FM_TRACK_API_KEY: String(config['FM_TRACK_API_KEY'] ?? '').trim(),
+    FM_TRACK_BASE_URL: String(
+      config['FM_TRACK_BASE_URL'] || 'https://api.fm-track.com',
+    ),
   };
 }

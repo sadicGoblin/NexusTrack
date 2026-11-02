@@ -27,6 +27,7 @@ import { Cargando } from '../../compartido/cargando';
 import { BarraDocumento } from '../../compartido/documentos/barra-documento';
 import { CuentaConductor } from '../../compartido/documentos/cuenta-conductor';
 import { Dato } from '../../compartido/documentos/dato';
+import { RecorridoGps } from '../../compartido/documentos/recorrido-gps';
 import { ResumenRetiro } from '../../compartido/documentos/resumen-retiro';
 import { SelectorPadre } from '../../compartido/documentos/selector-padre';
 import { CampoFecha } from '../../compartido/formulario/campo-fecha';
@@ -76,6 +77,7 @@ interface CabeceraCarga {
     BarraDocumento,
     Cargando,
     CuentaConductor,
+    RecorridoGps,
     ResumenRetiro,
     SelectorPadre,
     CamposFormulario,
@@ -122,6 +124,7 @@ export class Rendicion {
     gastos: [],
   });
   readonly guardando = signal(false);
+  readonly mostrarRecorrido = signal(false);
 
   readonly columnasCargas = COLUMNAS_CARGAS;
   readonly creando = computed(() => !this.id());
@@ -132,6 +135,17 @@ export class Rendicion {
     const v = this.valores();
     return calcularRendicion({ ...v.cabecera, viaticos: v.viaticos, gastos: v.gastos });
   });
+
+  /** Salida y llegada anotadas ("AAAA-MM-DDTHH:mm"), aunque no estén guardadas: el recorrido GPS
+   *  se puede revisar mientras se ingresa la rendición. */
+  readonly salidaGps = computed(() => this.momento('fechaSalida', 'horaSalida', '00:00'));
+  readonly llegadaGps = computed(() => this.momento('fechaLlegada', 'horaLlegada', '23:59'));
+
+  private momento(fecha: string, hora: string, horaPorDefecto: string): string | null {
+    const c = this.valores().cabecera;
+    const dia = dateAIso(c[fecha]);
+    return dia ? `${dia}T${c[hora] || horaPorDefecto}` : null;
+  }
 
   readonly camposViaje: CampoFormulario[] = [
     { campo: 'fecha', etiqueta: 'Fecha de rendición', tipo: 'fecha', requerido: true },

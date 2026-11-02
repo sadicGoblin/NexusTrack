@@ -7,3 +7,5 @@ export * from './montos.js';
 export * from './calculos.js';
 export type * from './contratos.js';
 export * from './cuenta.js';
+export * from './informes.js';
+export type * from './recorrido.js';

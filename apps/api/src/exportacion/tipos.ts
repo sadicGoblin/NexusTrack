@@ -34,6 +34,16 @@ export interface DocumentoImprimible {
   nombreArchivo: string;
 }
 
+/** Informe con datos de cabecera, una tabla y totales al pie (por ejemplo, órdenes por facturar). */
+export interface InformeImprimible {
+  titulo: string;
+  datos: { etiqueta: string; valor: unknown; tipo?: TipoColumna }[];
+  columnas: ColumnaExportacion[];
+  filas: Record<string, unknown>[];
+  totales?: { etiqueta: string; valor: unknown; tipo?: TipoColumna }[];
+  nombreArchivo: string;
+}
+
 export interface DatosEmisor {
   nombre: string;
   rut: string;

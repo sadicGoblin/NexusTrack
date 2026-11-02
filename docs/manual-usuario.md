@@ -86,6 +86,8 @@ Complete salida, llegada y odómetros (los kilómetros se calculan solos), peaje
 
 Al final está la **cuenta del conductor**, que se recalcula mientras escribe: saldo anterior + anticipos de este flete − gastos de esta rendición = saldo de la cuenta.
 
+**Recorrido GPS**: en la sección Viaje, el botón **Recorrido GPS** abre, sin salir de la rendición, el mapa con la ruta del camión entre la salida y la llegada anotadas (aunque todavía no se haya guardado). A la derecha se ven la distancia según el GPS junto a los kilómetros rendidos, el tiempo en movimiento y detenido, y la lista de viajes y paradas: haga clic en una para verla en el mapa. Con **± 1 h** o **± 3 h** se amplía el período, para revisar si las horas anotadas calzan con el GPS. Las paradas naranjas son con motor encendido y las grises con motor apagado. Si no hay llegada anotada, se muestran 2 días desde la salida.
+
 ## Cuentas de conductores
 
 **Operación → Cuentas de conductores** muestra el saldo de cada conductor que tiene anticipos o rendiciones.
@@ -98,6 +100,28 @@ Al final está la **cuenta del conductor**, que se recalcula mientras escribe: s
 - Haga clic en un conductor para ver su cuenta flete a flete, y en un flete para abrir su orden de retiro.
 
 Los vales de combustible no entran en la cuenta: son combustible cargado, no dinero entregado al conductor.
+
+## Informes
+
+Solo muestran información: se calculan con los documentos emitidos y no se ingresa nada. Se filtran por **cliente** y por **día**, **entre días** o **mes**, y se descargan en **Excel** o **PDF**.
+
+### Control de fletes
+
+**Informes → Control de fletes**: una fila por flete (orden de carga no anulada), filtrada por la fecha de la orden de retiro, con las columnas de la planilla del cliente. Los botones **Por rendir** y **Rendidos** separan los fletes que aún no tienen rendición. Arriba están el valor de los fletes, el costo total, el margen y la rentabilidad del período; al pie de la grilla, la fila de totales, que también sale en el Excel y el PDF.
+
+- **Distancia** y **Horómetro**: kilómetros y horas del motor del remolque según la rendición.
+- **Litros camión**, **litros remolque** y **Combustible**: de los vales de combustible emitidos.
+- **Km/Lt** = distancia / litros camión. **Lt/Hr** = litros remolque / horómetro.
+- **Anticipo**: vales de dinero emitidos. Peajes, viático, carga-descarga, **petróleo** y otros gastos vienen de la rendición; **Total gastos** es su suma (el total de la rendición).
+- **Saldo** = anticipo − total gastos (positivo: a favor del conductor, como en su cuenta).
+- **Comisiones** = valor del flete × % de comisión del conductor.
+- **Costo total** = total gastos + combustible + comisiones. **Margen** = valor flete − costo total. **Rentabilidad** = margen / valor flete.
+
+Haga clic en un flete para abrir su rendición (o su orden de carga si aún no se rinde).
+
+### Órdenes por facturar
+
+**Informes → Órdenes por facturar**: órdenes de carga con guías del período (por fecha de carga), estén o no rendidas. Sin cliente elegido muestra el total a facturar de cada cliente; haga clic en uno (o elíjalo arriba) para ver el detalle con su razón social, RUT y período, y descargue el **informe** en PDF o Excel para facturar. Las guías de una orden con la misma tarifa van en una línea, con sus números separados por guion.
 
 ## Documentos: PDF, Excel y anulación
 

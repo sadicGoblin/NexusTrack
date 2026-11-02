@@ -13,6 +13,7 @@ import {
   ArrayMaxSize,
   IsArray,
   IsObject,
+  IsOptional,
   ValidateNested,
 } from 'class-validator';
 import type {
@@ -25,11 +26,12 @@ import { Opcion, Texto } from '../comun/validacion.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ExcelService } from './excel.service.js';
 import { PdfService } from './pdf.service.js';
-import { htmlDocumento, htmlListado } from './plantillas.js';
+import { htmlDocumento, htmlInforme, htmlListado } from './plantillas.js';
 import type {
   ArchivoGenerado,
   DatosEmisor,
   DocumentoImprimible,
+  InformeImprimible,
 } from './tipos.js';
 
 const TIPOS_COLUMNA: TipoColumna[] = [
@@ -68,7 +70,13 @@ class ExportarTablaDto implements ExportarTablaInput {
   })
   @IsObject({ each: true })
   filas!: Record<string, unknown>[];
+  @IsOptional()
+  @IsObject()
+  totales?: Record<string, unknown>;
 }
+
+/** Columnas que caben a tamaño normal en una hoja A4 horizontal; con más, el PDF se achica. */
+const COLUMNAS_A4 = 17;
 
 /** Fecha y hora de Chile para el pie de los documentos. */
 function ahoraChile(): string {
@@ -140,12 +148,32 @@ export class ExportacionService {
         ? await this.pdf.desdeHtml(
             htmlListado(input, emisor, ahoraChile()),
             input.columnas.length > 7,
+            Math.max(0.6, Math.min(1, COLUMNAS_A4 / input.columnas.length)),
           )
         : await this.excel.listado(input, emisor, ahoraChile());
     return {
       contenido,
       tipo: MIME[input.formato],
       nombre: `${aNombreArchivo(input.titulo)}.${input.formato}`,
+    };
+  }
+
+  async informe(
+    informe: InformeImprimible,
+    formato: FormatoExportacion,
+  ): Promise<ArchivoGenerado> {
+    const emisor = await this.emisor();
+    const contenido =
+      formato === 'pdf'
+        ? await this.pdf.desdeHtml(
+            htmlInforme(informe, emisor, ahoraChile()),
+            informe.columnas.length > 7,
+          )
+        : await this.excel.informe(informe, emisor, ahoraChile());
+    return {
+      contenido,
+      tipo: MIME[formato],
+      nombre: `${aNombreArchivo(informe.nombreArchivo)}.${formato}`,
     };
   }
 }
