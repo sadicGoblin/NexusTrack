@@ -7,12 +7,17 @@ import {
   Query,
 } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import type { FiltroRecorrido, RecorridoDto } from '@nexustrack/shared';
+import type {
+  EstadoGpsDto,
+  FiltroRecorrido,
+  RecorridoDto,
+} from '@nexustrack/shared';
 import { invalido } from '../comun/errores.js';
 import { chileAUtc } from '../comun/fechas.js';
 import { FechaHora, Texto } from '../comun/validacion.js';
-import { analizarRecorrido } from './analisis.js';
+import { analizarRecorrido, type Punto } from './analisis.js';
 import { FmTrackService } from './fm-track.js';
+import { CapturaGpsService, HistorialGpsService } from './historial-gps.js';
 
 class FiltroRecorridoDto implements FiltroRecorrido {
   @Texto('Patente', { max: 12, mayusculas: true }) patente!: string;
@@ -24,10 +29,17 @@ const MAX_DIAS = 10;
 const VIGENCIA_CACHE = 5 * 60_000;
 const MAX_CACHE = 50;
 
+/** Une posiciones de dos fuentes por hora, sin repetir. */
+function mezclar(a: Punto[], b: Punto[]): Punto[] {
+  const porHora = new Map<number, Punto>();
+  for (const p of [...a, ...b]) if (!porHora.has(p.t)) porHora.set(p.t, p);
+  return [...porHora.values()].sort((x, y) => x.t - y.t);
+}
+
 /**
- * Recorrido GPS de un camión entre la salida y la llegada de una rendición (solo historial). Las
- * consultas recientes quedan en memoria unos minutos: revisar la misma rendición no vuelve a
- * pedir las posiciones al GPS.
+ * Recorrido GPS de un camión entre la salida y la llegada de una rendición (solo historial). Sale
+ * de las posiciones capturadas cada minuto; lo anterior a la primera guardada se pide una vez al
+ * GPS y queda guardado. Las consultas recientes quedan en memoria unos minutos.
  */
 @Injectable()
 export class RecorridosService {
@@ -36,7 +48,13 @@ export class RecorridosService {
     { creado: number; recorrido: RecorridoDto }
   >();
 
-  constructor(private readonly gps: FmTrackService) {}
+  /** Desde cuándo ya se le pidió al GPS cada vehículo (aunque no haya devuelto nada). */
+  private readonly pedidoDesde = new Map<string, number>();
+
+  constructor(
+    private readonly gps: FmTrackService,
+    private readonly historial: HistorialGpsService,
+  ) {}
 
   async obtener(f: FiltroRecorrido): Promise<RecorridoDto> {
     const desde = chileAUtc(f.desde);
@@ -61,11 +79,27 @@ export class RecorridosService {
     if (guardado && Date.now() - guardado.creado < VIGENCIA_CACHE)
       return guardado.recorrido;
 
-    const { puntos, truncado } = await this.gps.posiciones(
-      vehiculo.id,
-      desde,
-      hasta,
+    const guardadas = await this.historial.leer(vehiculo.id, desde, hasta);
+    let puntos = guardadas;
+    let truncado = false;
+    let fuente: RecorridoDto['fuente'] = 'local';
+    const cubiertoDesde = Math.min(
+      (await this.historial.primera(vehiculo.id))?.getTime() ?? Infinity,
+      this.pedidoDesde.get(vehiculo.id) ?? Infinity,
     );
+    if (cubiertoDesde - desde.getTime() > 2 * 60_000) {
+      const fin = new Date(Math.min(cubiertoDesde, hasta.getTime()));
+      const r = await this.gps.posiciones(vehiculo.id, desde, fin);
+      await this.historial.guardar(vehiculo.id, r.puntos);
+      if (!r.truncado)
+        this.pedidoDesde.set(
+          vehiculo.id,
+          Math.min(cubiertoDesde, desde.getTime()),
+        );
+      puntos = mezclar(r.puntos, guardadas);
+      truncado = r.truncado;
+      fuente = guardadas.length ? 'mixta' : 'gps';
+    }
     const recorrido: RecorridoDto = {
       patente: f.patente,
       vehiculo: vehiculo.nombre,
@@ -73,6 +107,7 @@ export class RecorridosService {
       hasta: hasta.toISOString(),
       ...analizarRecorrido(puntos),
       truncado,
+      fuente,
     };
     this.cache.set(clave, { creado: Date.now(), recorrido });
     if (this.cache.size > MAX_CACHE)
@@ -84,7 +119,15 @@ export class RecorridosService {
 @ApiTags('Recorridos GPS')
 @Controller('recorridos')
 export class RecorridosController {
-  constructor(private readonly servicio: RecorridosService) {}
+  constructor(
+    private readonly servicio: RecorridosService,
+    private readonly captura: CapturaGpsService,
+  ) {}
+
+  /** Diagnóstico de la captura: vehículos del grupo, última vuelta y posiciones guardadas. */
+  @Get('estado') estado(): Promise<EstadoGpsDto> {
+    return this.captura.estado();
+  }
 
   @Get() obtener(@Query() f: FiltroRecorridoDto) {
     return this.servicio.obtener(f);
@@ -93,6 +136,11 @@ export class RecorridosController {
 
 @Module({
   controllers: [RecorridosController],
-  providers: [RecorridosService, FmTrackService],
+  providers: [
+    RecorridosService,
+    FmTrackService,
+    HistorialGpsService,
+    CapturaGpsService,
+  ],
 })
 export class RecorridosModule {}

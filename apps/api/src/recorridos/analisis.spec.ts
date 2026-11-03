@@ -1,6 +1,7 @@
 import { analizarRecorrido, distanciaKm, type Punto } from './analisis.js';
 import { aPuntos, coincidePatente } from './fm-track.js';
 import { chileAUtc } from '../comun/fechas.js';
+import { inicioVentana } from './historial-gps.js';
 
 const INICIO = Date.parse('2026-10-28T12:00:00Z');
 
@@ -84,10 +85,33 @@ describe('análisis del recorrido', () => {
 
 describe('fm-track', () => {
   it('reconoce la patente en el nombre del vehículo', () => {
-    const v = { id: '1', nombre: 'CDSP97, Luis Gaete', patente: null };
+    const v = { id: '1', nombre: 'CDSP97. Luis Gaete', patente: null };
     expect(coincidePatente(v, 'CDSP97')).toBe(true);
     expect(coincidePatente(v, 'cd-sp97')).toBe(true);
     expect(coincidePatente(v, 'CDSP98')).toBe(false);
+    // Nombres reales del grupo: camión y remolque juntos, o sin espacio tras el punto.
+    const conRemolque = {
+      id: '2',
+      nombre: 'CFGG63-JJ9104. Axel Rey',
+      patente: null,
+    };
+    expect(coincidePatente(conRemolque, 'CFGG63')).toBe(true);
+    expect(coincidePatente(conRemolque, 'JJ9104')).toBe(true);
+    expect(
+      coincidePatente(
+        { id: '3', nombre: 'FXRW41.Sergio Allende', patente: null },
+        'FXRW41',
+      ),
+    ).toBe(true);
+    expect(
+      coincidePatente(
+        { id: '4', nombre: 'YY3752-JJ8766, Ariel Hernández', patente: null },
+        'YY3752',
+      ),
+    ).toBe(true);
+    expect(
+      coincidePatente({ id: '5', nombre: 'WT9877', patente: null }, 'WT9878'),
+    ).toBe(false);
     expect(
       coincidePatente(
         { id: '2', nombre: 'Camión 3', patente: 'JH-7077' },
@@ -119,6 +143,23 @@ describe('fm-track', () => {
       [54, 1, null],
       [0, 0, 1000.5],
     ]);
+  });
+});
+
+describe('captura de posiciones', () => {
+  const ahora = Date.parse('2026-11-03T15:00:00Z');
+  const min = 60_000;
+
+  it('relee unos minutos ya consultados y parte con la última hora', () => {
+    expect(inicioVentana(ahora - min, ahora, false)).toBe(ahora - 11 * min);
+    expect(inicioVentana(undefined, ahora, false)).toBe(ahora - 60 * min);
+  });
+
+  it('revisa 6 horas una vez por hora y recupera hasta 7 días tras una caída', () => {
+    expect(inicioVentana(ahora - min, ahora, true)).toBe(ahora - 6 * 60 * min);
+    expect(inicioVentana(ahora - 30 * 24 * 60 * min, ahora, false)).toBe(
+      ahora - 7 * 24 * 60 * min,
+    );
   });
 });
 

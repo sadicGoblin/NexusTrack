@@ -189,8 +189,8 @@ ya tiene un Caddy de otro proyecto en los puertos 80 y 443. Por eso:
   semanas después del viaje.
 - Solo historial: `GET /recorridos?patente&desde&hasta` (hora de Chile) lee las posiciones del
   período (hasta 10 días, en páginas de 1.000) y las resume en viajes y paradas con el mismo
-  análisis del mapa de track-gps (`apps/api/src/recorridos/analisis.ts`). No se guarda nada; las
-  consultas recientes quedan 5 minutos en memoria.
+  análisis del mapa de track-gps (`apps/api/src/recorridos/analisis.ts`). Las consultas
+  recientes quedan 5 minutos en memoria. Desde §17 las posiciones se guardan.
 - El camión se busca por patente dentro del nombre del vehículo en fm-track («CDSP97, Luis
   Gaete»), porque en fm-track la patente oficial suele venir vacía.
 - La rendición lo abre en un diálogo con los datos del formulario, aunque no estén guardados:
@@ -223,3 +223,22 @@ ya tiene un Caddy de otro proyecto en los puertos 80 y 443. Por eso:
 - En el Control de fletes las estadías son filas sin cliente ni valor de flete (sus costos restan
   margen al período); al filtrar por cliente no aparecen. En Órdenes por facturar no entran.
 - La app móvil lee estadías y vales de estadía (orden de retiro y orden de carga opcionales).
+
+## 17. Historial GPS propio: captura cada minuto
+
+- El cliente pidió un historial de al menos 30 días como el de la plataforma de integraciones.
+  Igual que allá, la API consulta cada minuto las posiciones de los vehículos del grupo de
+  fm-track (`FM_TRACK_GRUPO`, hoy «NexBrav»: `GET /object-groups` trae los ids de cada grupo) y
+  las guarda en `PosicionGps` (clave vehículo + hora: lo repetido se ignora). Se borran pasados
+  `GPS_RETENCION_DIAS` (40 por defecto, mínimo 31).
+- Cada vuelta pide a cada vehículo desde lo ya consultado menos 10 minutos (el equipo sube con
+  atraso lo que guardó sin señal) y, una vez por hora, las últimas 6 horas. Tras una caída de la
+  API se recupera hasta 7 días. Cuatro consultas simultáneas: más provoca respuestas 429. Si una
+  vuelta no termina, la siguiente se salta.
+- El recorrido sale de la base. Si se pide un período anterior a la primera posición guardada,
+  esa parte se pide a fm-track una vez y se guarda (como el relleno de track-gps); así hay
+  historial desde el primer día, aunque la captura recién empiece.
+- No se hizo una carga masiva de 30 días al inicio: serían cerca de 1,5 millones de posiciones
+  pedidas de golpe al GPS desde un VPS de 1 CPU compartido; se completan a pedido.
+- Apagada en pruebas y con `GPS_CAPTURA=false` (útil en desarrollo). La API corre en un solo
+  contenedor; con varias instancias habría que dejarla en una sola.

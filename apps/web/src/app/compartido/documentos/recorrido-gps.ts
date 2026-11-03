@@ -176,7 +176,8 @@ export function duracion(seg: number): string {
               </div>
               <p class="nota">
                 {{ r.vehiculo }} · {{ r.resumen.puntos }} posiciones · primera
-                {{ momentoIso(r.resumen.primero) }}, última {{ momentoIso(r.resumen.ultimo) }}
+                {{ momentoIso(r.resumen.primero) }}, última {{ momentoIso(r.resumen.ultimo) }} ·
+                {{ fuentes[r.fuente] }}
                 @if (r.truncado) {
                   <span class="alerta"> · muestra parcial (período muy largo)</span>
                 }
@@ -483,6 +484,11 @@ export class RecorridoGps implements OnDestroy {
   readonly resaltado = signal<Evento | null>(null);
   readonly maximizado = signal(false);
   readonly duracion = duracion;
+  readonly fuentes: Record<RecorridoDto['fuente'], string> = {
+    local: 'historial guardado',
+    gps: 'consultado al GPS',
+    mixta: 'historial guardado y GPS',
+  };
 
   readonly eventos = computed<Evento[]>(() => {
     const r = this.recorrido();

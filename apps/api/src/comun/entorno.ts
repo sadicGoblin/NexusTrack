@@ -15,6 +15,12 @@ export interface Entorno {
   /** Clave de la API de fm-track (GPS de los camiones). Sin ella no se muestran recorridos. */
   FM_TRACK_API_KEY: string;
   FM_TRACK_BASE_URL: string;
+  /** Grupos de fm-track con los camiones de la empresa (nombre o id, separados por coma). */
+  FM_TRACK_GRUPO: string;
+  /** Captura de posiciones cada minuto para el historial (false para apagarla). */
+  GPS_CAPTURA: boolean;
+  /** Días que se guardan las posiciones capturadas. */
+  GPS_RETENCION_DIAS: number;
 }
 
 export function validarEntorno(config: Record<string, unknown>): Entorno {
@@ -56,6 +62,14 @@ export function validarEntorno(config: Record<string, unknown>): Entorno {
     FM_TRACK_API_KEY: String(config['FM_TRACK_API_KEY'] ?? '').trim(),
     FM_TRACK_BASE_URL: String(
       config['FM_TRACK_BASE_URL'] || 'https://api.fm-track.com',
+    ),
+    FM_TRACK_GRUPO: String(config['FM_TRACK_GRUPO'] ?? '').trim(),
+    GPS_CAPTURA:
+      String(config['GPS_CAPTURA'] ?? 'true').toLowerCase() !== 'false' &&
+      nodeEnv !== 'test',
+    GPS_RETENCION_DIAS: Math.max(
+      31,
+      Number(config['GPS_RETENCION_DIAS'] ?? 40) || 40,
     ),
   };
 }

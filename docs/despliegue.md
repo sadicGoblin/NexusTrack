@@ -117,15 +117,26 @@ Las pantallas que editan sin formulario (como Parámetros) marcan lo pendiente c
 ## Recorrido GPS (fm-track)
 
 La rendición muestra el recorrido del camión entre la salida y la llegada, leído de fm-track
-(Ruptela), el GPS de los camiones. La API lo consulta con la clave `FM_TRACK_API_KEY` de
-`.env.vps`; sin ella, el diálogo avisa que el GPS no está configurado y el resto funciona igual.
+(Ruptela), el GPS de los camiones. Variables de `/opt/nexustrack/.env.vps`:
 
-1. Un administrador de la cuenta fm-track genera la clave en el portal de fm-track.
-2. En el VPS, agréguela a `/opt/nexustrack/.env.vps` (`FM_TRACK_API_KEY=...`).
-3. Vuelva a levantar la API: `VPS=root@2.25.132.42 npm run deploy:api`.
+| Variable | Qué es |
+| --- | --- |
+| `FM_TRACK_API_KEY` | Clave de la API de fm-track (la genera un administrador en su portal). Sin ella, el diálogo avisa que el GPS no está configurado. |
+| `FM_TRACK_GRUPO` | Grupo de fm-track con los camiones de la empresa (hoy `NexBrav`, 39 unidades). Nombre o id; varios separados por coma. Vacío: todos los vehículos de la cuenta. |
+| `GPS_RETENCION_DIAS` | Días que se guardan las posiciones (40 por defecto, mínimo 31). |
 
-El camión se busca por patente en el nombre del vehículo en fm-track (por ejemplo
-«CDSP97, Luis Gaete»). Solo se leen posiciones históricas; NexusTrack no guarda nada del GPS.
+Como en la plataforma de integraciones (track-gps), la API captura cada minuto las posiciones de
+los vehículos del grupo (de a 4 consultas a la vez) y las guarda en la tabla `PosicionGps`; el
+recorrido sale de ahí. Lo anterior a la primera posición guardada se pide una vez a fm-track y
+queda guardado. Después de cambiar una variable, vuelva a levantar la API
+(`VPS=root@2.25.132.42 npm run deploy:api`).
+
+Para revisar la captura, el registro de la API muestra al arrancar cuántos vehículos captura y
+cada hora cuántas posiciones guardó (`docker logs nexustrack-api-1 | grep CapturaGps`), y
+`GET /api/recorridos/estado` (con sesión) entrega el resumen.
+
+El camión se busca por patente en el nombre del vehículo en fm-track («CDSP97. Luis Gaete»,
+«CFGG63-JJ9104. Axel Rey»: también calza la patente del remolque).
 
 ## Importar listados de conductores y equipos
 

@@ -639,3 +639,24 @@ model RendicionGasto {
   itemGasto       CatalogoItem? @relation("GastoItem", fields: [itemGastoId], references: [id])
   observaciones   String?
 }
+
+// ───────────────────────────── GPS ─────────────────────────────
+
+/// Posiciones de los camiones del grupo de fm-track, capturadas cada minuto (y las que se piden
+/// al GPS para completar un recorrido). Alimentan el recorrido de las rendiciones sin consultar
+/// fm-track cada vez. Se borran pasados GPS_RETENCION_DIAS.
+model PosicionGps {
+  /// Id del vehículo en fm-track.
+  vehiculoId String
+  fecha      DateTime @db.Timestamptz(3)
+  lat        Float
+  lng        Float
+  velocidad  Float?
+  /// 1 encendido, 0 apagado.
+  encendido  Int?     @db.SmallInt
+  /// Odómetro del equipo GPS, en km.
+  odometro   Float?
+
+  @@id([vehiculoId, fecha])
+  @@index([fecha])
+}

@@ -7,7 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import type { Punto } from './analisis.js';
 
-/** Vehículo en el GPS. El nombre suele llevar la patente: "CDSP97, Luis Gaete". */
+/** Vehículo en el GPS. El nombre lleva la patente: "CDSP97. Luis Gaete", "CFGG63-JJ9104. Axel Rey". */
 export interface VehiculoGps {
   id: string;
   nombre: string;
@@ -26,13 +26,19 @@ const esperar = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export const normalizarPatente = (texto: string) =>
   texto.toUpperCase().replace(/[^A-Z0-9]/g, '');
 
-/** Busca la patente en la patente oficial o en cualquier parte del nombre (antes de una coma, etc.). */
+/**
+ * Busca la patente en la patente oficial o en las palabras del nombre (separadas por punto, coma,
+ * guion o espacio). En «CFGG63-JJ9104. Axel Rey» calzan el camión y su remolque, que viajan juntos.
+ */
 export function coincidePatente(v: VehiculoGps, patente: string): boolean {
   const buscada = normalizarPatente(patente);
   if (!buscada) return false;
-  const candidatos = [v.patente ?? '', ...v.nombre.split(/[,;|/()]/)];
+  const candidatos = [
+    normalizarPatente(v.patente ?? ''),
+    ...v.nombre.toUpperCase().split(/[^A-Z0-9]+/),
+  ];
   return (
-    candidatos.some((c) => normalizarPatente(c) === buscada) ||
+    candidatos.includes(buscada) ||
     normalizarPatente(v.nombre).startsWith(buscada)
   );
 }
@@ -74,6 +80,8 @@ export class FmTrackService {
   private readonly logger = new Logger(FmTrackService.name);
   private readonly clave: string;
   private readonly base: string;
+  /** Grupos de fm-track (nombre o id, separados por coma) cuyos vehículos se consultan. */
+  readonly grupos: string[];
   private vehiculos?: { leidos: number; lista: VehiculoGps[] };
 
   constructor(config: ConfigService) {
@@ -81,6 +89,10 @@ export class FmTrackService {
     this.base = (
       config.get<string>('FM_TRACK_BASE_URL') ?? 'https://api.fm-track.com'
     ).replace(/\/$/, '');
+    this.grupos = (config.get<string>('FM_TRACK_GRUPO') ?? '')
+      .split(',')
+      .map((g) => g.trim())
+      .filter(Boolean);
   }
 
   get configurado(): boolean {
@@ -129,21 +141,45 @@ export class FmTrackService {
     }
   }
 
-  private async listarVehiculos(): Promise<VehiculoGps[]> {
+  private async listar(ruta: string): Promise<Record<string, any>[]> {
+    const datos = await this.llamar(ruta);
+    return (
+      Array.isArray(datos) ? datos : ((datos as any)?.items ?? [])
+    ) as Record<string, any>[];
+  }
+
+  /**
+   * Vehículos que se consultan: los de los grupos configurados (como en la plataforma de
+   * integraciones, cada grupo de fm-track trae los ids de sus vehículos) o todos si no hay grupo.
+   */
+  async listarVehiculos(): Promise<VehiculoGps[]> {
     if (
       this.vehiculos &&
       Date.now() - this.vehiculos.leidos < VIGENCIA_VEHICULOS
     )
       return this.vehiculos.lista;
-    const datos = await this.llamar('/objects');
-    const items = (
-      Array.isArray(datos) ? datos : ((datos as any)?.items ?? [])
-    ) as Record<string, any>[];
-    const lista = items.map((o) => ({
+    let lista = (await this.listar('/objects')).map((o) => ({
       id: String(o['id']),
       nombre: String(o['name'] ?? ''),
-      patente: o['vehicle_params']?.plate_number ?? null,
+      patente: (o['vehicle_params']?.plate_number as string | null) ?? null,
     }));
+    if (this.grupos.length) {
+      const grupos = (await this.listar('/object-groups')).filter(
+        (g) =>
+          this.grupos.includes(String(g['name'])) ||
+          this.grupos.includes(String(g['id'])),
+      );
+      if (!grupos.length)
+        throw new ServiceUnavailableException(
+          `El grupo ${this.grupos.join(', ')} no existe en el GPS.`,
+        );
+      const ids = new Set(
+        grupos.flatMap((g) =>
+          ((g['objects_ids'] as unknown[]) ?? []).map(String),
+        ),
+      );
+      lista = lista.filter((v) => ids.has(v.id));
+    }
     this.vehiculos = { leidos: Date.now(), lista };
     return lista;
   }

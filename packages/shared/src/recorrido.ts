@@ -68,4 +68,24 @@ export interface RecorridoDto {
   ruta: [number, number, number, number][];
   /** El GPS entregó más posiciones de las que se leen en una consulta. */
   truncado: boolean;
+  /**
+   * De dónde salieron las posiciones: guardadas por la captura de cada minuto, pedidas al GPS
+   * (período anterior a lo guardado) o ambas.
+   */
+  fuente: 'local' | 'gps' | 'mixta';
+}
+
+/** Estado de la captura de posiciones (diagnóstico). */
+export interface EstadoGpsDto {
+  configurado: boolean;
+  grupos: string[];
+  capturando: boolean;
+  retencionDias: number;
+  vehiculos: number;
+  /** Última vuelta de captura (ISO UTC). */
+  ultimaCaptura: string | null;
+  ultimoError: string | null;
+  posiciones: number;
+  /** Posición más antigua guardada. */
+  desde: string | null;
 }
