@@ -46,6 +46,21 @@ export type EstadoDocumento = (typeof EstadoDocumento)[keyof typeof EstadoDocume
 
 export type Estado = EstadoOrdenRetiro | EstadoOrdenCarga | EstadoDocumento;
 
+/** Rendición de un flete (con orden de carga) o de una estadía; comparten correlativo. */
+export const TipoRendicion = {
+  FLETE: 'FLETE',
+  ESTADIA: 'ESTADIA',
+} as const;
+export type TipoRendicion = (typeof TipoRendicion)[keyof typeof TipoRendicion];
+
+export const TIPO_RENDICION_ETIQUETA: Record<TipoRendicion, string> = {
+  FLETE: 'Flete',
+  ESTADIA: 'Estadía',
+};
+
+/** Origen de una estadía en la hoja de ruta; su destino es el lugar donde se hizo. */
+export const ORIGEN_ESTADIA = 'ESTADÍA';
+
 export const ESTADO_ETIQUETA: Record<Estado, string> = {
   ABIERTA: 'Abierta',
   CON_CARGA: 'Con carga',

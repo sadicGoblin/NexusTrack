@@ -1,6 +1,6 @@
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { FormArray, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { MessageService } from 'primeng/api';
 import { Button } from 'primeng/button';
 import { InputNumber } from 'primeng/inputnumber';
@@ -11,12 +11,16 @@ import { SelectButton } from 'primeng/selectbutton';
 import { Tooltip } from 'primeng/tooltip';
 import {
   calcularRendicion,
+  GRUPOS_MOVIL,
   hoyIso,
+  ORIGEN_ESTADIA,
   sumarDias,
+  TIPOS_REMOLQUE,
   totalViatico,
   type OrdenCargaDto,
   type RendicionDto,
   type ResumenRetiroDto,
+  type SugerenciaAsignacionDto,
 } from '@nexustrack/shared';
 import { ApiService } from '../../nucleo/api.service';
 import { DatosMaestrosService } from '../../nucleo/datos-maestros.service';
@@ -58,6 +62,14 @@ type FormGasto = FormGroup<{
   observaciones: FormControl<string | null>;
 }>;
 
+/** En una estadía, salida y llegada son el inicio y el término de la estadía. */
+const ETIQUETAS_ESTADIA: Record<string, Partial<CampoFormulario>> = {
+  fechaSalida: { etiqueta: 'Inicio de la estadía', requerido: true },
+  horaSalida: { etiqueta: 'Hora inicio' },
+  fechaLlegada: { etiqueta: 'Término de la estadía' },
+  horaLlegada: { etiqueta: 'Hora término' },
+};
+
 interface CabeceraCarga {
   id: number;
   numero: number;
@@ -92,6 +104,7 @@ interface CabeceraCarga {
     SelectButton,
     Message,
     Tooltip,
+    RouterLink,
     PesosPipe,
     CorrelativoPipe,
     FechaPipe,
@@ -109,6 +122,8 @@ export class Rendicion {
   readonly id = input<string>();
   /** Parámetro de consulta: orden de carga que se rinde. */
   readonly carga = input<string>();
+  /** Dato de la ruta: nueva rendición de estadía (sin orden de carga). */
+  readonly estadia = input(false);
 
   readonly dto = signal<RendicionDto | null>(null);
   readonly cabecera = signal<CabeceraCarga | null>(null);
@@ -125,6 +140,49 @@ export class Rendicion {
   });
   readonly guardando = signal(false);
   readonly mostrarRecorrido = signal(false);
+  readonly sugerencia = signal<string | null>(null);
+  readonly origenEstadia = ORIGEN_ESTADIA;
+
+  readonly esEstadia = computed(() =>
+    this.dto() ? this.dto()!.tipo === 'ESTADIA' : this.estadia(),
+  );
+  /** Anticipo de la estadía ya emitida: vale de dinero que la apunta. */
+  readonly puedeAnticipar = computed(
+    () =>
+      this.esEstadia() && this.dto()?.estado === 'EMITIDO' && this.sesion.puede('editarFinanzas'),
+  );
+  readonly listado = computed(() =>
+    this.esEstadia() ? '/operacion/estadias' : '/operacion/rendiciones',
+  );
+  readonly hojaRuta = computed(() => this.dto()?.hojaRuta ?? this.cabecera()?.hojaRuta ?? null);
+  /** Id de la hoja de ruta para su enlace: «C<orden de carga>» o «E<estadía>». */
+  readonly idHojaRuta = computed(() => {
+    const d = this.dto();
+    if (d?.tipo === 'ESTADIA') return `E${d.id}`;
+    const c = this.cabecera();
+    return c ? `C${c.id}` : null;
+  });
+  readonly subtitulo = computed(() => {
+    const r = this.resumen();
+    if (r) return `${r.conductor} · ${r.cliente}`;
+    const d = this.dto();
+    return d ? `${d.conductor} · ${d.destino}` : '';
+  });
+  /** Patente para el recorrido GPS: la de la orden de carga o la elegida en la estadía. */
+  readonly patenteGps = computed(() => {
+    if (!this.esEstadia()) return this.cabecera()?.patenteCamion ?? '';
+    const id = this.valores().cabecera['camionId'];
+    return this.maestros.moviles().find((m) => m.id === id)?.patente ?? '';
+  });
+  /** Cuenta del conductor: la estadía cuenta como un flete más (clave E<id>). */
+  readonly conductorCuenta = computed<number | null>(() =>
+    this.esEstadia()
+      ? (this.valores().cabecera['conductorId'] ?? null)
+      : (this.resumen()?.conductorId ?? null),
+  );
+  readonly claveCuenta = computed(() =>
+    this.esEstadia() ? `E${this.dto()?.id ?? 0}` : `R${this.resumen()?.id ?? 0}`,
+  );
 
   readonly columnasCargas = COLUMNAS_CARGAS;
   readonly creando = computed(() => !this.id());
@@ -147,7 +205,38 @@ export class Rendicion {
     return dia ? `${dia}T${c[hora] || horaPorDefecto}` : null;
   }
 
-  readonly camposViaje: CampoFormulario[] = [
+  readonly camposEstadia: CampoFormulario[] = [
+    {
+      campo: 'conductorId',
+      etiqueta: 'Conductor',
+      tipo: 'select',
+      requerido: true,
+      ancho: 2,
+      opciones: () => this.maestros.opcionesConductores(),
+    },
+    {
+      campo: 'destinoId',
+      etiqueta: 'Lugar de la estadía (destino)',
+      tipo: 'select',
+      requerido: true,
+      opciones: (v) => this.maestros.opcionesCatalogo('CIUDAD', v['destinoId']),
+    },
+    {
+      campo: 'camionId',
+      etiqueta: 'Patente camión',
+      tipo: 'select',
+      requerido: true,
+      opciones: () => this.maestros.opcionesMoviles(GRUPOS_MOVIL.camion),
+    },
+    {
+      campo: 'remolqueId',
+      etiqueta: 'Patente remolque',
+      tipo: 'select',
+      opciones: () => this.maestros.opcionesMoviles(TIPOS_REMOLQUE),
+    },
+  ];
+
+  private readonly camposViajeBase: CampoFormulario[] = [
     { campo: 'fecha', etiqueta: 'Fecha de rendición', tipo: 'fecha', requerido: true },
     { campo: 'fechaSalida', etiqueta: 'Fecha salida', tipo: 'fecha' },
     { campo: 'horaSalida', etiqueta: 'Hora salida', tipo: 'hora' },
@@ -192,6 +281,12 @@ export class Rendicion {
     },
   ];
 
+  readonly camposViaje = computed<CampoFormulario[]>(() =>
+    this.esEstadia()
+      ? this.camposViajeBase.map((c) => ({ ...c, ...ETIQUETAS_ESTADIA[c.campo] }))
+      : this.camposViajeBase,
+  );
+
   /** Lo indica el conductor: si el motor del remolque funcionó en el flete (se cobra aparte). */
   readonly opcionesMotor = [
     { label: 'Con motor', value: true },
@@ -209,7 +304,11 @@ export class Rendicion {
       ayuda: 'Pagado en ruta con el anticipo.',
     },
   ];
-  private readonly campos = [...this.camposViaje, ...this.camposGastos];
+  private readonly campos = computed(() => [
+    ...(this.esEstadia() ? this.camposEstadia : []),
+    ...this.camposViaje(),
+    ...this.camposGastos,
+  ]);
 
   opciones(tipo: 'TIPO_DOCUMENTO' | 'ITEM_GASTO') {
     return this.maestros.opcionesCatalogo(tipo);
@@ -219,28 +318,35 @@ export class Rendicion {
     effect(() => {
       const id = this.id();
       const carga = this.carga();
+      this.estadia();
       untracked(() => void this.cargar(id, carga));
     });
   }
 
   private async cargar(id?: string, cargaId?: string): Promise<void> {
-    await this.maestros.asegurar('catalogos');
+    await this.maestros.asegurar('catalogos', 'conductores', 'moviles');
     if (id) {
       const d = await this.api.get<RendicionDto>(`rendiciones/${id}`);
       this.dto.set(d);
       this.resumen.set(d.retiro);
-      this.cabecera.set({
-        id: d.ordenCargaId,
-        numero: d.ordenCargaNumero,
-        hojaRuta: null,
-        tramo: d.tramo,
-        fechaCarga: d.fechaCarga,
-        horaCarga: d.horaCarga,
-        packingCarga: d.packingCarga,
-        patenteCamion: d.patenteCamion,
-        patenteRemolque: d.patenteRemolque,
-        totalNeto: null,
-      });
+      this.cabecera.set(
+        d.ordenCargaId
+          ? {
+              id: d.ordenCargaId,
+              numero: d.ordenCargaNumero!,
+              hojaRuta: d.hojaRuta,
+              tramo: d.tramo,
+              fechaCarga: d.fechaCarga!,
+              horaCarga: d.horaCarga,
+              packingCarga: d.packingCarga,
+              patenteCamion: d.patenteCamion,
+              patenteRemolque: d.patenteRemolque,
+              totalNeto: null,
+            }
+          : null,
+      );
+      this.construir();
+    } else if (this.estadia()) {
       this.construir();
     } else if (cargaId) {
       const oc = await this.api.get<OrdenCargaDto>(`ordenes-carga/${cargaId}`);
@@ -276,12 +382,11 @@ export class Rendicion {
 
   private construir(): void {
     const d = this.dto();
-    const c = this.cabecera()!;
     const form = construirFormulario(
-      this.campos,
+      this.campos(),
       d ?? {
         fecha: hoyIso(),
-        fechaSalida: c.fechaCarga,
+        fechaSalida: this.cabecera()?.fechaCarga ?? hoyIso(),
         peajes: 0,
         carga: 0,
         descarga: 0,
@@ -313,10 +418,31 @@ export class Rendicion {
     form.valueChanges.subscribe(actualizar);
     viaticos.valueChanges.subscribe(actualizar);
     gastos.valueChanges.subscribe(actualizar);
+    if (this.esEstadia())
+      form.get('conductorId')!.valueChanges.subscribe((id) => void this.sugerirEquipo(id));
+    this.sugerencia.set(null);
     this.form.set(form);
     this.viaticos.set(viaticos);
     this.gastos.set(gastos);
     actualizar();
+  }
+
+  /** Estadía: camión y remolque desde la asignación vigente del conductor. */
+  private async sugerirEquipo(conductorId: number | null): Promise<void> {
+    const form = this.form();
+    if (!form || !conductorId) return;
+    const s = await this.api.get<SugerenciaAsignacionDto>('asignaciones/sugerencia', {
+      conductorId,
+    });
+    form.patchValue({
+      camionId: s.camionId ?? form.value.camionId,
+      remolqueId: s.camionId ? s.remolqueId : form.value.remolqueId,
+    });
+    this.sugerencia.set(
+      s.camionId
+        ? 'Camión y remolque completados desde la asignación vigente del conductor. Puede modificarlos.'
+        : 'El conductor no tiene asignación vigente: complete camión y remolque.',
+    );
   }
 
   private nuevoViatico(v: Record<string, unknown> = {}): FormViatico {
@@ -376,7 +502,8 @@ export class Rendicion {
     const viaticos = this.viaticos();
     const gastos = this.gastos();
     const c = this.cabecera();
-    if (!form || !viaticos || !gastos || !c) return;
+    const estadia = this.esEstadia();
+    if (!form || !viaticos || !gastos || (!estadia && !c)) return;
     if (form.invalid || viaticos.invalid || gastos.invalid) {
       for (const f of [form, viaticos, gastos]) f.markAllAsTouched();
       this.mensajes.add({
@@ -387,9 +514,10 @@ export class Rendicion {
       return;
     }
     const entrada = {
-      ...aEntrada(this.campos, form),
+      ...aEntrada(this.campos(), form),
+      tipo: estadia ? 'ESTADIA' : 'FLETE',
       remolqueConMotor: form.get('remolqueConMotor')!.value,
-      ordenCargaId: c.id,
+      ordenCargaId: estadia ? null : c!.id,
       viaticos: viaticos.getRawValue().map((v) => ({ ...v, fecha: dateAIso(v.fecha) })),
       gastos: gastos
         .getRawValue()
@@ -403,14 +531,14 @@ export class Rendicion {
         : await this.api.post<RendicionDto>('rendiciones', entrada);
       this.mensajes.add({
         severity: 'success',
-        summary: d ? 'Cambios guardados' : 'Rendición emitida',
+        summary: d ? 'Cambios guardados' : estadia ? 'Estadía emitida' : 'Rendición emitida',
         detail: `N° ${String(res.numero).padStart(6, '0')}`,
       });
       if (d) {
         this.dto.set(res);
         this.construir();
       } else {
-        await this.router.navigate(['/operacion/rendiciones', res.id], { replaceUrl: true });
+        await this.router.navigate([this.listado(), res.id], { replaceUrl: true });
       }
     } finally {
       this.guardando.set(false);
@@ -427,7 +555,7 @@ export class Rendicion {
       summary: 'Rendición eliminada',
       detail: `N° ${String(d.numero).padStart(6, '0')}`,
     });
-    await this.router.navigate(['/operacion/rendiciones'], { replaceUrl: true });
+    await this.router.navigate([this.listado()], { replaceUrl: true });
   };
 
   async anular(motivo: string): Promise<void> {
@@ -438,7 +566,9 @@ export class Rendicion {
     this.mensajes.add({
       severity: 'success',
       summary: 'Rendición anulada',
-      detail: 'La orden de carga vuelve a quedar abierta.',
+      detail: this.esEstadia()
+        ? 'La estadía sale de la numeración de hojas de ruta.'
+        : 'La orden de carga vuelve a quedar abierta.',
     });
   }
 }

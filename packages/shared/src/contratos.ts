@@ -3,7 +3,14 @@
  * Fechas siempre como texto AAAA-MM-DD; horas como HH:mm; montos en pesos enteros.
  */
 import type { TipoCatalogo, CodigoTipoMovil } from './catalogos.js';
-import type { Rol, TipoConductor, EstadoOrdenRetiro, EstadoOrdenCarga, EstadoDocumento } from './enums.js';
+import type {
+  Rol,
+  TipoConductor,
+  EstadoOrdenRetiro,
+  EstadoOrdenCarga,
+  EstadoDocumento,
+  TipoRendicion,
+} from './enums.js';
 
 type Fecha = string;
 type Nullable<T> = T | null;
@@ -391,7 +398,9 @@ export interface OrdenRetiroDto extends Required<OrdenRetiroInput> {
 }
 
 export interface ValeDineroInput {
-  ordenRetiroId: number;
+  /** Anticipo de un flete (orden de retiro) o de una estadía: uno de los dos. */
+  ordenRetiroId?: Nullable<number>;
+  estadiaId?: Nullable<number>;
   fechaEntrega: Fecha;
   concepto?: string;
   glosa?: Nullable<string>;
@@ -407,7 +416,24 @@ export interface ValeDineroDto extends Required<ValeDineroInput> {
   sitioEntrega: string;
   formaPago: string;
   motivoAnulacion: Nullable<string>;
-  retiro: ResumenRetiroDto;
+  retiro: Nullable<ResumenRetiroDto>;
+  estadia: Nullable<ResumenEstadiaDto>;
+}
+
+/** Datos de una estadía que muestran sus vales de dinero. */
+export interface ResumenEstadiaDto {
+  id: number;
+  numero: number;
+  hojaRuta: Nullable<number>;
+  estado: EstadoDocumento;
+  fechaInicio: Fecha;
+  destino: string;
+  conductor: string;
+  conductorId: number;
+  conductorRut: string;
+  empresa: string;
+  camion: string;
+  remolque: Nullable<string>;
 }
 
 /** Datos de la orden de retiro que heredan los documentos hijos. */
@@ -554,7 +580,15 @@ export interface GastoInput {
 }
 
 export interface RendicionInput {
-  ordenCargaId: number;
+  /** FLETE por defecto. */
+  tipo?: TipoRendicion;
+  /** Solo fletes. */
+  ordenCargaId?: Nullable<number>;
+  /** Solo estadías: conductor, equipo y lugar de la estadía (fecha de salida = inicio). */
+  conductorId?: Nullable<number>;
+  camionId?: Nullable<number>;
+  remolqueId?: Nullable<number>;
+  destinoId?: Nullable<number>;
   fecha: Fecha;
   fechaSalida?: Nullable<Fecha>;
   horaSalida?: Nullable<string>;
@@ -580,15 +614,30 @@ export interface RendicionInput {
 export interface RendicionDto {
   id: number;
   numero: number;
+  tipo: TipoRendicion;
   estado: EstadoDocumento;
-  ordenCargaId: number;
-  ordenCargaNumero: number;
+  hojaRuta: Nullable<number>;
+  /** Datos de la orden de carga: nulos en una estadía. */
+  ordenCargaId: Nullable<number>;
+  ordenCargaNumero: Nullable<number>;
   tramo: Nullable<string>;
-  fechaCarga: Fecha;
+  fechaCarga: Nullable<Fecha>;
   horaCarga: Nullable<string>;
   packingCarga: Nullable<string>;
+  /** De la orden de retiro (flete) o de la estadía. */
+  conductorId: number;
+  conductor: string;
+  conductorRut: string;
+  empresa: string;
+  camionId: number;
+  remolqueId: Nullable<number>;
+  tipoRemolque: Nullable<string>;
   patenteCamion: string;
   patenteRemolque: Nullable<string>;
+  origen: string;
+  destino: string;
+  /** Lugar de la estadía. */
+  destinoId: Nullable<number>;
   fecha: Fecha;
   fechaSalida: Nullable<Fecha>;
   horaSalida: Nullable<string>;
@@ -619,7 +668,48 @@ export interface RendicionDto {
     tipoDocumento: Nullable<string>;
     itemGasto: Nullable<string>;
   })[];
-  retiro: ResumenRetiroDto;
+  /** Nulo en una estadía. */
+  retiro: Nullable<ResumenRetiroDto>;
+}
+
+// ───────────────────────────── Hojas de ruta ─────────────────────────────
+
+/** Una hoja de ruta: la de un flete (orden de carga con guías) o la de una estadía. */
+export interface HojaRutaDto {
+  /** «C<id de la orden de carga>» o «E<id de la estadía>»: el N° cambia, el documento no. */
+  id: string;
+  numero: number;
+  tipo: TipoRendicion;
+  /** Fecha de carga o de inicio de la estadía. */
+  fecha: Fecha;
+  hora: Nullable<string>;
+  /** Abierta mientras el flete no se rinde; la estadía es su propia rendición. */
+  estado: EstadoOrdenCarga;
+  origen: string;
+  destino: string;
+  conductor: string;
+  patenteCamion: string;
+  patenteRemolque: Nullable<string>;
+  cliente: Nullable<string>;
+  tramo: Nullable<string>;
+  ordenRetiroId: Nullable<number>;
+  ordenRetiroNumero: Nullable<number>;
+  ordenCargaId: Nullable<number>;
+  ordenCargaNumero: Nullable<number>;
+  rendicionId: Nullable<number>;
+  rendicionNumero: Nullable<number>;
+  /** Gastos de la rendición, como en la planilla de hojas de ruta; nulos si no se rinde. */
+  totalGastos: Nullable<number>;
+  peajes: Nullable<number>;
+  cargaDescarga: Nullable<number>;
+  viaticos: Nullable<number>;
+  varios: Nullable<number>;
+  petroleo: Nullable<number>;
+}
+
+export interface HojaRutaDetalleDto extends HojaRutaDto {
+  ordenCarga: Nullable<OrdenCargaDto>;
+  rendicion: Nullable<RendicionDto>;
 }
 
 // ───────────────────────────── Inicio y exportación ─────────────────────────────

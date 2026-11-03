@@ -6,7 +6,8 @@ import type {
   UsuarioSesion,
 } from '@nexustrack/shared';
 import { RequierePermiso, UsuarioActual } from '../comun/decoradores.js';
-import { noEncontrado } from '../comun/errores.js';
+import { invalido, noEncontrado } from '../comun/errores.js';
+import { renumerarHojasRuta } from '../documentos/numeracion-hoja-ruta.js';
 import { Texto } from '../comun/validacion.js';
 import { AuditoriaService } from '../comun/auditoria.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -45,6 +46,11 @@ export class ParametrosController {
   ): Promise<ParametroDto> {
     const antes = await this.prisma.parametro.findUnique({ where: { clave } });
     if (!antes) throw noEncontrado('El parámetro');
+    const hojaRuta = clave === 'HOJA_RUTA_INICIAL';
+    if (hojaRuta && !/^[1-9]\d{0,8}$/.test(dto.valor ?? ''))
+      throw invalido(
+        'El N° de la primera hoja de ruta debe ser un entero positivo.',
+      );
     return this.prisma.$transaction(async (tx) => {
       const p = await tx.parametro.update({
         where: { clave },
@@ -57,6 +63,8 @@ export class ParametrosController {
         usuarioId: usuario.id,
         cambios: { [clave]: { antes: antes.valor, despues: p.valor } },
       });
+      // Todas las hojas de ruta se numeran desde este valor.
+      if (hojaRuta) await renumerarHojasRuta(tx);
       return { clave: p.clave, valor: p.valor, descripcion: p.descripcion };
     });
   }

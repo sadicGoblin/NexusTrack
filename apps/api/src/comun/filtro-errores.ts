@@ -40,7 +40,7 @@ const UNICOS: [RegExp, string][] = [
   [/patente/i, 'Ya existe un móvil con esa patente.'],
   [/codigo/i, 'Ya existe un registro con ese código.'],
   [/email/i, 'Ya existe un usuario con ese correo.'],
-  [/numero|hojaRuta/i, 'El correlativo ya fue utilizado. Intente nuevamente.'],
+  [/numero/i, 'El correlativo ya fue utilizado. Intente nuevamente.'],
 ];
 
 /**

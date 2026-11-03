@@ -1,6 +1,8 @@
 import {
   ESTADO_ETIQUETA,
+  ORIGEN_ESTADIA,
   type OrdenRetiroDto,
+  type ResumenEstadiaDto,
   type ResumenRetiroDto,
 } from '@nexustrack/shared';
 import { aIso } from '../comun/fechas.js';
@@ -138,6 +140,52 @@ export function aOrdenRetiroDto(o: FilaRetiro): OrdenRetiroDto {
     cantidadValesDinero: o._count.valesDinero,
     cantidadValesCombustible: o._count.valesCombustible,
     creadoEn: o.creadoEn.toISOString(),
+  };
+}
+
+/** Relaciones de una estadía que muestran sus vales de dinero. */
+export const includeEstadia = {
+  conductor: { include: { empresa: true } },
+  camion: true,
+  remolque: true,
+  destino: true,
+} satisfies Prisma.RendicionInclude;
+
+export function aResumenEstadia(
+  r: Prisma.RendicionGetPayload<{ include: typeof includeEstadia }>,
+): ResumenEstadiaDto {
+  return {
+    id: r.id,
+    numero: r.numero,
+    hojaRuta: r.hojaRuta,
+    estado: r.estado,
+    fechaInicio: aIso(r.fechaSalida)!,
+    destino: r.destino!.valor,
+    conductor: r.conductor!.nombre,
+    conductorId: r.conductorId!,
+    conductorRut: r.conductor!.rut,
+    empresa: r.conductor!.empresa.razonSocial,
+    camion: r.camion!.patente,
+    remolque: r.remolque?.patente ?? null,
+  };
+}
+
+/** Campos de la estadía que se imprimen en sus vales. */
+export function seccionEstadia(
+  e: ResumenEstadiaDto,
+): DocumentoImprimible['secciones'][number] {
+  return {
+    titulo: `Estadía · rendición N° ${String(e.numero).padStart(6, '0')}`,
+    campos: [
+      { etiqueta: 'Inicio', valor: e.fechaInicio, tipo: 'fecha' },
+      { etiqueta: 'Origen', valor: ORIGEN_ESTADIA },
+      { etiqueta: 'Lugar (destino)', valor: e.destino, ancho: 2 },
+      { etiqueta: 'Conductor', valor: e.conductor, ancho: 2 },
+      { etiqueta: 'RUT conductor', valor: e.conductorRut },
+      { etiqueta: 'Empresa', valor: e.empresa },
+      { etiqueta: 'Patente camión', valor: e.camion },
+      { etiqueta: 'Patente remolque', valor: e.remolque },
+    ],
   };
 }
 

@@ -2,7 +2,7 @@
  * Informes de solo lectura: control de fletes (costos y margen de cada flete) y órdenes de carga
  * por facturar. Se calculan al vuelo desde los documentos emitidos.
  */
-import type { EstadoOrdenCarga } from './enums.js';
+import type { EstadoOrdenCarga, TipoRendicion } from './enums.js';
 import { redondear } from './montos.js';
 
 type Fecha = string;
@@ -58,23 +58,27 @@ export interface CalculosControlFlete {
 }
 
 export interface FilaControlFleteDto extends DatosControlFlete, CalculosControlFlete {
-  /** Id de la orden de carga: identifica la fila. */
-  id: number;
-  ordenRetiroId: number;
+  /** «C<id de la orden de carga>» o «E<id de la estadía>». */
+  id: string;
+  /** Una estadía no tiene cliente ni valor de flete: solo costos. */
+  tipo: TipoRendicion;
+  ordenCargaId: number | null;
+  ordenRetiroId: number | null;
   rendicionId: number | null;
-  /** Estado de la orden de carga: abierta (por rendir) o rendida. */
+  /** Abierta (por rendir) o rendida; una estadía es su propia rendición. */
   estado: EstadoOrdenCarga;
   conductor: string;
-  /** Fecha de la orden de retiro. */
+  /** Fecha de la orden de retiro o de inicio de la estadía. */
   fecha: Fecha;
-  ordenRetiro: number;
-  ordenCarga: number;
+  ordenRetiro: number | null;
+  ordenCarga: number | null;
   rendicion: number | null;
   /** Salida y llegada anotadas en la rendición. */
   fechaInicio: Fecha | null;
   fechaTermino: Fecha | null;
-  clienteId: number;
-  cliente: string;
+  clienteId: number | null;
+  cliente: string | null;
+  /** Tramo del flete o «ESTADÍA - <lugar>». */
   tramo: string | null;
   /** Números de los vales de dinero, separados por coma. */
   numerosAnticipo: string;

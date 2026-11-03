@@ -3,7 +3,11 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Select } from 'primeng/select';
 import { SelectButton } from 'primeng/selectbutton';
-import { totalesControlFletes, type FilaControlFleteDto } from '@nexustrack/shared';
+import {
+  TIPO_RENDICION_ETIQUETA,
+  totalesControlFletes,
+  type FilaControlFleteDto,
+} from '@nexustrack/shared';
 import { ApiService } from '../../nucleo/api.service';
 import { DatosMaestrosService } from '../../nucleo/datos-maestros.service';
 import { PesosPipe, PorcentajePipe } from '../../nucleo/pipes';
@@ -28,7 +32,8 @@ const CLAVE_ESTADO = 'nt-estado-control-fletes';
         <h1>Control de fletes</h1>
         <p>
           Costos, margen y rentabilidad de cada flete, calculados con las órdenes, vales y
-          rendiciones emitidos. Se filtra por la fecha de la orden de retiro.
+          rendiciones emitidos. Se filtra por la fecha de la orden de retiro (las estadías, por su
+          inicio; no tienen cliente ni valor de flete).
         </p>
       </div>
       <div class="nt-encabezado-acciones filtros">
@@ -66,7 +71,7 @@ const CLAVE_ESTADO = 'nt-estado-control-fletes';
       <div class="cifra">
         <span>Valor de los fletes</span>
         <strong>{{ totales().valorFlete | pesos }}</strong>
-        <small>{{ visibles().length }} {{ visibles().length === 1 ? 'flete' : 'fletes' }}</small>
+        <small>{{ conteo() }}</small>
       </div>
       <div class="cifra">
         <span>Costo total</span>
@@ -114,9 +119,22 @@ export class ControlFletes implements OnInit {
 
   readonly visibles = computed(() => {
     const e = this.estado();
-    return e === TODOS ? this.filas() : this.filas().filter((f) => f.estado === e);
+    return (e === TODOS ? this.filas() : this.filas().filter((f) => f.estado === e)).map((f) => ({
+      ...f,
+      tipoEtiqueta: TIPO_RENDICION_ETIQUETA[f.tipo],
+    }));
   });
   readonly totales = computed(() => totalesControlFletes(this.visibles()));
+  readonly conteo = computed(() => {
+    const estadias = this.visibles().filter((f) => f.tipo === 'ESTADIA').length;
+    const fletes = this.visibles().length - estadias;
+    return [
+      `${fletes} ${fletes === 1 ? 'flete' : 'fletes'}`,
+      estadias ? `${estadias} ${estadias === 1 ? 'estadía' : 'estadías'}` : '',
+    ]
+      .filter(Boolean)
+      .join(' · ');
+  });
   readonly opcionesEstado = computed(() => {
     const filas = this.filas();
     const cuantos = (e: string) => filas.filter((f) => f.estado === e).length;
@@ -137,6 +155,7 @@ export class ControlFletes implements OnInit {
   });
 
   readonly columnas: ColumnaTabla[] = [
+    { campo: 'tipoEtiqueta', titulo: 'Tipo', filtro: 'lista' },
     { campo: 'conductor', titulo: 'Conductor', filtro: 'lista', ancho: '14rem' },
     { campo: 'fecha', titulo: 'Fecha', tipo: 'fecha' },
     { campo: 'ordenRetiro', titulo: 'Orden de Retiro', tipo: 'correlativo' },
@@ -208,12 +227,14 @@ export class ControlFletes implements OnInit {
     }
   }
 
-  /** Abre la rendición del flete o, si aún no se rinde, su orden de carga. */
+  /** Abre la estadía, la rendición del flete o, si aún no se rinde, su orden de carga. */
   abrir(fila: FilaControlFleteDto): void {
     void this.router.navigate(
-      fila.rendicionId
-        ? ['/operacion/rendiciones', fila.rendicionId]
-        : ['/operacion/ordenes-carga', fila.id],
+      fila.tipo === 'ESTADIA'
+        ? ['/operacion/estadias', fila.rendicionId]
+        : fila.rendicionId
+          ? ['/operacion/rendiciones', fila.rendicionId]
+          : ['/operacion/ordenes-carga', fila.ordenCargaId],
     );
   }
 }

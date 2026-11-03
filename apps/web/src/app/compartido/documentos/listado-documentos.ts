@@ -14,10 +14,13 @@ export interface ConfigListado {
   titulo: string;
   descripcion: string;
   recurso: string;
+  /** Parámetros fijos de la consulta, además de las fechas (por ejemplo, el tipo). */
+  parametros?: Record<string, string>;
   columnas: ColumnaTabla[];
   claveEstado: string;
-  etiquetaNuevo: string;
-  permisoNuevo: Permiso;
+  /** Sin botón «Nuevo» si se omite (listados que no crean documentos). */
+  etiquetaNuevo?: string;
+  permisoNuevo?: Permiso;
   /** Convierte cada documento en una fila plana para la grilla. */
   aplanar?: (doc: any) => Record<string, unknown>;
   /** Estados que se ofrecen como botones de filtro rápido, en ese orden. */
@@ -87,7 +90,10 @@ export class ListadoDocumentos implements OnInit {
   readonly documentos = signal<any[]>([]);
   readonly cargando = signal(true);
   readonly rango = signal<RangoFechas | null>(null);
-  readonly puedeCrear = computed(() => this.sesion.puede(this.config().permisoNuevo));
+  readonly puedeCrear = computed(() => {
+    const permiso = this.config().permisoNuevo;
+    return !!permiso && this.sesion.puede(permiso);
+  });
   readonly filas = computed(() => {
     const aplanar = this.config().aplanar;
     return aplanar ? this.documentos().map(aplanar) : this.documentos();
@@ -135,6 +141,7 @@ export class ListadoDocumentos implements OnInit {
     try {
       this.documentos.set(
         await this.api.get<any[]>(this.config().recurso, {
+          ...this.config().parametros,
           desde: rango.desde,
           hasta: rango.hasta,
         }),

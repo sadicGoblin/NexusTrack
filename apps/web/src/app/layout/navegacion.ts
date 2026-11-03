@@ -23,6 +23,7 @@ export const MENU: GrupoMenu[] = [
         ruta: '/operacion/ordenes-retiro',
       },
       { etiqueta: 'Órdenes de carga', icono: 'pi pi-box', ruta: '/operacion/ordenes-carga' },
+      { etiqueta: 'Hojas de ruta', icono: 'pi pi-directions', ruta: '/operacion/hojas-ruta' },
       { etiqueta: 'Vales de dinero', icono: 'pi pi-wallet', ruta: '/operacion/vales-dinero' },
       {
         etiqueta: 'Vales de combustible',
@@ -30,6 +31,7 @@ export const MENU: GrupoMenu[] = [
         ruta: '/operacion/vales-combustible',
       },
       { etiqueta: 'Rendiciones', icono: 'pi pi-receipt', ruta: '/operacion/rendiciones' },
+      { etiqueta: 'Estadías', icono: 'pi pi-hourglass', ruta: '/operacion/estadias' },
       {
         etiqueta: 'Cuentas de conductores',
         icono: 'pi pi-book',

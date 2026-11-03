@@ -1,6 +1,9 @@
+import type { TipoRendicion } from './enums.js';
+
 /**
  * Cuenta del conductor: lo que se le anticipa (vales de dinero) contra lo que rinde (total de la
- * rendición), flete a flete, como en las planillas de la empresa. Cada flete rendido deja un
+ * rendición), flete a flete, como en las planillas de la empresa. Una estadía cuenta como un flete
+ * más: sus vales y su rendición. Cada flete rendido deja un
  * resultado = anticipos − rendido, que se acumula en el saldo de la cuenta:
  *   positivo → a favor del conductor (le sobró anticipo; lo usa en el próximo flete);
  *   negativo → en contra del conductor (gastó más de lo anticipado; puso dinero propio).
@@ -18,10 +21,15 @@ export interface ValeCuentaDto {
 }
 
 export interface FleteCuentaDto {
-  ordenRetiroId: number;
-  ordenRetiroNumero: number;
-  fechaRetiro: Fecha;
-  cliente: string;
+  /** «R<id de la orden de retiro>» en un flete o «E<id de la estadía>». */
+  clave: string;
+  tipo: TipoRendicion;
+  /** Nulos en una estadía. */
+  ordenRetiroId: number | null;
+  ordenRetiroNumero: number | null;
+  /** Fecha de la orden de retiro o de inicio de la estadía. */
+  fecha: Fecha;
+  cliente: string | null;
   origen: string;
   destino: string;
   vales: ValeCuentaDto[];
@@ -66,7 +74,7 @@ export function armarCuenta(fletes: FleteSinCalcular[]): FleteCuentaDto[] {
     );
   const porRendir = fletes
     .filter((f) => f.rendido === null)
-    .sort((a, b) => a.fechaRetiro.localeCompare(b.fechaRetiro) || a.ordenRetiroNumero - b.ordenRetiroNumero);
+    .sort((a, b) => a.fecha.localeCompare(b.fecha) || a.clave.localeCompare(b.clave));
   let saldo = 0;
   return [
     ...rendidos.map((f) => {
@@ -104,11 +112,11 @@ export function resumirCuenta(fletes: FleteCuentaDto[]) {
  * Saldo de la cuenta antes del flete indicado: si ya se rindió, el que había justo antes de su
  * rendición; si no, el saldo actual (todavía no lo incluye).
  */
-export function saldoAntesDe(fletes: FleteCuentaDto[], ordenRetiroId: number): number {
+export function saldoAntesDe(fletes: FleteCuentaDto[], clave: string): number {
   let anterior = 0;
   for (const f of fletes) {
     if (f.resultado === null) break;
-    if (f.ordenRetiroId === ordenRetiroId) return anterior;
+    if (f.clave === clave) return anterior;
     anterior = f.saldo!;
   }
   return anterior;

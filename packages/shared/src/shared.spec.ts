@@ -158,9 +158,11 @@ describe('cuenta del conductor', () => {
     anticipos: number[],
     rendicion?: { numero: number; fecha: string; total: number },
   ): FleteSinCalcular => ({
+    clave: `R${n}`,
+    tipo: 'FLETE',
     ordenRetiroId: n,
     ordenRetiroNumero: n,
-    fechaRetiro: `2026-10-0${n}`,
+    fecha: `2026-10-0${n}`,
     cliente: 'COEXCA',
     origen: 'LOS ANDES',
     destino: 'SAN ANTONIO',
@@ -203,10 +205,28 @@ describe('cuenta del conductor', () => {
   });
 
   it('da el saldo previo a cada flete', () => {
-    expect(saldoAntesDe(fletes, 1)).toBe(0);
-    expect(saldoAntesDe(fletes, 2)).toBe(-20000);
+    expect(saldoAntesDe(fletes, 'R1')).toBe(0);
+    expect(saldoAntesDe(fletes, 'R2')).toBe(-20000);
     // Un flete sin rendir ve el saldo actual.
-    expect(saldoAntesDe(fletes, 3)).toBe(-10000);
+    expect(saldoAntesDe(fletes, 'R3')).toBe(-10000);
+  });
+
+  it('suma las estadías como un flete más, por fecha de rendición', () => {
+    const estadia: FleteSinCalcular = {
+      ...flete(4, [20000], { numero: 6, fecha: '2026-10-05', total: 15000 }),
+      clave: 'E4',
+      tipo: 'ESTADIA',
+      ordenRetiroId: null,
+      ordenRetiroNumero: null,
+      cliente: null,
+    };
+    const cuenta = armarCuenta([...fletes, estadia]);
+    expect(cuenta.map((f) => [f.clave, f.saldo])).toEqual([
+      ['R1', -20000],
+      ['E4', -15000],
+      ['R2', -5000],
+      ['R3', null],
+    ]);
   });
 
   it('describe el sentido del saldo', () => {

@@ -159,11 +159,27 @@ class ValeDinero {
       formaPago = j.t('formaPago'),
       monto = j.e('monto'),
       motivoAnulacion = j.tn('motivoAnulacion'),
-      retiro = ResumenRetiro.desde(j['retiro'] as Json);
+      retiro = j['retiro'] == null ? null : ResumenRetiro.desde(j['retiro'] as Json),
+      estadia = j['estadia'] == null ? null : ResumenEstadia.desde(j['estadia'] as Json);
   final int id, numero, monto;
   final String estado, fechaEntrega, sitioEntrega, formaPago;
   final String? concepto, glosa, motivoAnulacion;
-  final ResumenRetiro retiro;
+  /// Anticipo de un flete (orden de retiro) o de una estadía: uno de los dos.
+  final ResumenRetiro? retiro;
+  final ResumenEstadia? estadia;
+
+  String get conductor => retiro?.conductor ?? estadia?.conductor ?? '';
+}
+
+/// Estadía a la que apunta un vale de dinero.
+class ResumenEstadia {
+  ResumenEstadia.desde(Json j)
+    : id = j.e('id'),
+      numero = j.e('numero'),
+      destino = j.t('destino'),
+      conductor = j.t('conductor');
+  final int id, numero;
+  final String destino, conductor;
 }
 
 class ValeCombustible {
@@ -222,8 +238,12 @@ class Rendicion {
     : id = j.e('id'),
       numero = j.e('numero'),
       estado = j.t('estado'),
-      ordenCargaId = j.e('ordenCargaId'),
-      ordenCargaNumero = j.e('ordenCargaNumero'),
+      tipo = j.t('tipo'),
+      ordenCargaId = j.en('ordenCargaId'),
+      ordenCargaNumero = j.en('ordenCargaNumero'),
+      conductor = j.t('conductor'),
+      origen = j.t('origen'),
+      destino = j.t('destino'),
       tramo = j.tn('tramo'),
       patenteCamion = j.t('patenteCamion'),
       patenteRemolque = j.tn('patenteRemolque'),
@@ -246,16 +266,20 @@ class Rendicion {
       motivoAnulacion = j.tn('motivoAnulacion'),
       viaticos = j.l('viaticos').map(Viatico.desde).toList(),
       gastos = j.l('gastos').map(Gasto.desde).toList(),
-      retiro = ResumenRetiro.desde(j['retiro'] as Json);
-  final int id, numero, ordenCargaId, ordenCargaNumero, peajes, carga, descarga;
+      retiro = j['retiro'] == null ? null : ResumenRetiro.desde(j['retiro'] as Json);
+  final int id, numero, peajes, carga, descarga;
   final int totalViaticos, totalOtrosGastos, totalGeneral;
+  /// Nulos en una estadía (rendición sin orden de carga).
+  final int? ordenCargaId, ordenCargaNumero;
   final int? odometroInicial, odometroFinal, kmRecorridos;
-  final String estado, patenteCamion, fecha;
+  final String estado, tipo, conductor, origen, destino, patenteCamion, fecha;
   final String? tramo, patenteRemolque, fechaSalida, horaSalida, fechaLlegada, horaLlegada;
   final String? observaciones, sitioEntrega, motivoAnulacion;
   final List<Viatico> viaticos;
   final List<Gasto> gastos;
-  final ResumenRetiro retiro;
+  final ResumenRetiro? retiro;
+
+  bool get esEstadia => tipo == 'ESTADIA';
 }
 
 /// Un camión del tablero de asignaciones, con su conductor y remolques vigentes.

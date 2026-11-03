@@ -35,6 +35,16 @@ export const rutasDocumentos: Routes = [
     loadComponent: () => import('./orden-carga').then((m) => m.OrdenCarga),
   },
   {
+    path: 'hojas-ruta',
+    title: 'Hojas de ruta · NexusTrack',
+    loadComponent: () => listados().then((m) => m.ListaHojasRuta),
+  },
+  {
+    path: 'hojas-ruta/:id',
+    title: 'Hoja de ruta · NexusTrack',
+    loadComponent: () => import('./hoja-ruta').then((m) => m.HojaRuta),
+  },
+  {
     path: 'vales-dinero',
     title: 'Vales de dinero · NexusTrack',
     loadComponent: () => listados().then((m) => m.ListaValesDinero),
@@ -77,6 +87,22 @@ export const rutasDocumentos: Routes = [
   {
     path: 'rendiciones/:id',
     title: 'Rendición · NexusTrack',
+    loadComponent: () => import('./rendicion').then((m) => m.Rendicion),
+  },
+  {
+    path: 'estadias',
+    title: 'Estadías · NexusTrack',
+    loadComponent: () => listados().then((m) => m.ListaEstadias),
+  },
+  {
+    path: 'estadias/nuevo',
+    title: 'Nueva estadía · NexusTrack',
+    data: { estadia: true },
+    loadComponent: () => import('./rendicion').then((m) => m.Rendicion),
+  },
+  {
+    path: 'estadias/:id',
+    title: 'Estadía · NexusTrack',
     loadComponent: () => import('./rendicion').then((m) => m.Rendicion),
   },
   {

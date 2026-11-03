@@ -1,14 +1,22 @@
 import { Component, computed, effect, inject, input, signal, untracked } from '@angular/core';
-import { type FormGroup } from '@angular/forms';
-import { Router } from '@angular/router';
+import { FormsModule, type FormGroup } from '@angular/forms';
+import { Router, RouterLink } from '@angular/router';
 import { MessageService } from 'primeng/api';
 import { Message } from 'primeng/message';
+import { SelectButton } from 'primeng/selectbutton';
 import {
   hoyIso,
+  ORIGEN_ESTADIA,
+  sumarDias,
   type OrdenRetiroDto,
+  type RendicionDto,
+  type ResumenEstadiaDto,
   type ResumenRetiroDto,
   type ValeDineroDto,
 } from '@nexustrack/shared';
+import { CorrelativoPipe, FechaPipe } from '../../nucleo/pipes';
+import type { ColumnaTabla } from '../../compartido/tabla/tabla-datos';
+import { Dato } from '../../compartido/documentos/dato';
 import { ApiService } from '../../nucleo/api.service';
 import { DatosMaestrosService } from '../../nucleo/datos-maestros.service';
 import { SesionService } from '../../nucleo/sesion.service';
@@ -35,22 +43,49 @@ import { aResumen, COLUMNAS_RETIROS } from './comun';
     SelectorPadre,
     CamposFormulario,
     Message,
+    SelectButton,
+    FormsModule,
+    RouterLink,
+    Dato,
+    CorrelativoPipe,
+    FechaPipe,
   ],
   template: `
-    @if (creando() && !retiro()) {
+    @if (creando() && !retiro() && !estadia()) {
       <nt-barra-documento titulo="Nuevo vale de dinero" volver="/operacion/vales-dinero" />
-      <nt-selector-padre
-        titulo="Órdenes de retiro activas"
-        instrucciones="Seleccione la orden de retiro a la que asignará el vale de dinero (anticipo de viaje)."
-        [filas]="candidatos()"
-        [columnas]="columnasRetiros"
-        [cargando]="cargandoCandidatos()"
-        (elegir)="elegirRetiro($event)"
+      <p-selectbutton
+        class="origen"
+        [options]="origenes"
+        [ngModel]="origen()"
+        (ngModelChange)="elegirOrigen($event)"
+        optionLabel="label"
+        optionValue="value"
+        [allowEmpty]="false"
+        aria-label="Anticipo de un flete o de una estadía"
       />
+      @if (origen() === 'retiro') {
+        <nt-selector-padre
+          titulo="Órdenes de retiro activas"
+          instrucciones="Seleccione la orden de retiro a la que asignará el vale de dinero (anticipo de viaje)."
+          [filas]="candidatos()"
+          [columnas]="columnasRetiros"
+          [cargando]="cargandoCandidatos()"
+          (elegir)="elegirRetiro($event)"
+        />
+      } @else {
+        <nt-selector-padre
+          titulo="Estadías de los últimos 60 días"
+          instrucciones="Seleccione la estadía a la que asignará el vale de dinero (anticipo)."
+          [filas]="estadias()"
+          [columnas]="columnasEstadias"
+          [cargando]="cargandoCandidatos()"
+          (elegir)="elegirEstadia($event)"
+        />
+      }
     } @else {
       <nt-barra-documento
         titulo="Vale de dinero"
-        [subtitulo]="resumen() ? 'Anticipo de viaje · ' + resumen()!.conductor : ''"
+        [subtitulo]="conductor() ? 'Anticipo de viaje · ' + conductor() : ''"
         [numero]="dto()?.numero ?? null"
         [estado]="dto()?.estado ?? null"
         [recurso]="'vales-dinero/' + dto()?.id"
@@ -74,20 +109,49 @@ import { aResumen, COLUMNAS_RETIROS } from './comun';
       @if (resumen(); as r) {
         <nt-resumen-retiro [retiro]="r" />
       }
+      @if (resumenEstadia(); as e) {
+        <section class="nt-tarjeta">
+          <div class="nt-tarjeta-titulo">
+            <h2>Estadía N° {{ e.numero | correlativo }}</h2>
+            <a class="ver" [routerLink]="['/operacion/estadias', e.id]">Ver estadía</a>
+          </div>
+          <div class="nt-grilla">
+            <nt-dato etiqueta="Hoja de ruta" [valor]="e.hojaRuta | correlativo" />
+            <nt-dato etiqueta="Inicio" [valor]="e.fechaInicio | fecha" />
+            <nt-dato etiqueta="Origen" [valor]="origenEstadia" />
+            <nt-dato etiqueta="Lugar (destino)" [valor]="e.destino" />
+            <nt-dato etiqueta="Conductor" [valor]="e.conductor" class="nt-ancho-2" />
+            <nt-dato etiqueta="Empresa" [valor]="e.empresa" class="nt-ancho-2" />
+            <nt-dato etiqueta="Patente camión" [valor]="e.camion" />
+            <nt-dato etiqueta="Patente remolque" [valor]="e.remolque" />
+          </div>
+        </section>
+      }
       @if (form(); as f) {
         <section class="nt-tarjeta">
           <div class="nt-tarjeta-titulo"><h2>Anticipo</h2></div>
           <nt-campos [form]="f" [campos]="campos" [soloLectura]="!editable()" />
         </section>
       }
-      @if (resumen(); as r) {
+      @if (conductorId(); as conductorId) {
         <nt-cuenta-conductor
           modo="anticipo"
-          [conductorId]="r.conductorId"
-          [ordenRetiroId]="r.id"
+          [conductorId]="conductorId"
+          [clave]="clave()"
           [recargar]="dto()"
         />
       }
+    }
+  `,
+  styles: `
+    .origen {
+      display: flex;
+      margin-bottom: 1rem;
+    }
+    .ver {
+      font-size: 0.85rem;
+      text-decoration: none;
+      color: var(--p-primary-color);
     }
   `,
 })
@@ -100,10 +164,39 @@ export class ValeDinero {
 
   readonly id = input<string>();
   readonly retiro = input<string>();
+  /** Parámetro de consulta: estadía a la que se entrega el anticipo. */
+  readonly estadia = input<string>();
 
   readonly dto = signal<ValeDineroDto | null>(null);
   readonly resumen = signal<ResumenRetiroDto | null>(null);
+  readonly resumenEstadia = signal<ResumenEstadiaDto | null>(null);
   readonly candidatos = signal<OrdenRetiroDto[]>([]);
+  readonly estadias = signal<Record<string, unknown>[]>([]);
+  readonly origen = signal<'retiro' | 'estadia'>('retiro');
+  readonly origenes = [
+    { label: 'Flete (orden de retiro)', value: 'retiro' },
+    { label: 'Estadía', value: 'estadia' },
+  ];
+  readonly origenEstadia = ORIGEN_ESTADIA;
+  readonly conductor = computed(
+    () => this.resumen()?.conductor ?? this.resumenEstadia()?.conductor ?? '',
+  );
+  readonly conductorId = computed(
+    () => this.resumen()?.conductorId ?? this.resumenEstadia()?.conductorId ?? null,
+  );
+  /** Flete o estadía del vale en la cuenta del conductor. */
+  readonly clave = computed(() =>
+    this.resumenEstadia() ? `E${this.resumenEstadia()!.id}` : `R${this.resumen()?.id ?? 0}`,
+  );
+  readonly columnasEstadias: ColumnaTabla[] = [
+    { campo: 'numero', titulo: 'N°', tipo: 'correlativo', ancho: '6rem' },
+    { campo: 'hojaRuta', titulo: 'Hoja de ruta', tipo: 'correlativo' },
+    { campo: 'fechaSalida', titulo: 'Inicio', tipo: 'fecha' },
+    { campo: 'conductor', titulo: 'Conductor', filtro: 'lista' },
+    { campo: 'destino', titulo: 'Lugar', filtro: 'lista' },
+    { campo: 'patenteCamion', titulo: 'Camión', filtro: 'lista' },
+    { campo: 'totalGeneral', titulo: 'Total rendido', tipo: 'pesos' },
+  ];
   readonly cargandoCandidatos = signal(false);
   readonly form = signal<FormGroup | null>(null);
   readonly guardando = signal(false);
@@ -139,16 +232,35 @@ export class ValeDinero {
     effect(() => {
       const id = this.id();
       const retiro = this.retiro();
-      untracked(() => void this.cargar(id, retiro));
+      const estadia = this.estadia();
+      untracked(() => void this.cargar(id, retiro, estadia));
     });
   }
 
-  private async cargar(id?: string, retiroId?: string): Promise<void> {
+  private async cargar(id?: string, retiroId?: string, estadiaId?: string): Promise<void> {
     await this.maestros.asegurar('catalogos', 'parametros');
     if (id) {
       const d = await this.api.get<ValeDineroDto>(`vales-dinero/${id}`);
       this.dto.set(d);
       this.resumen.set(d.retiro);
+      this.resumenEstadia.set(d.estadia);
+      this.construir();
+    } else if (estadiaId) {
+      const r = await this.api.get<RendicionDto>(`rendiciones/${estadiaId}`);
+      this.resumenEstadia.set({
+        id: r.id,
+        numero: r.numero,
+        hojaRuta: r.hojaRuta,
+        estado: r.estado,
+        fechaInicio: r.fechaSalida!,
+        destino: r.destino,
+        conductor: r.conductor,
+        conductorId: r.conductorId,
+        conductorRut: r.conductorRut,
+        empresa: r.empresa,
+        camion: r.patenteCamion,
+        remolque: r.patenteRemolque,
+      });
       this.construir();
     } else if (retiroId) {
       this.resumen.set(aResumen(await this.api.get<OrdenRetiroDto>(`ordenes-retiro/${retiroId}`)));
@@ -169,6 +281,37 @@ export class ValeDinero {
     void this.router.navigate([], { queryParams: { retiro: id } });
   }
 
+  elegirEstadia(id: number): void {
+    void this.router.navigate([], { queryParams: { estadia: id } });
+  }
+
+  async elegirOrigen(origen: 'retiro' | 'estadia'): Promise<void> {
+    this.origen.set(origen);
+    if (origen !== 'estadia' || this.estadias().length) return;
+    this.cargandoCandidatos.set(true);
+    try {
+      const lista = await this.api.get<RendicionDto[]>('rendiciones', {
+        tipo: 'ESTADIA',
+        estado: 'EMITIDO',
+        desde: sumarDias(hoyIso(), -60),
+      });
+      this.estadias.set(
+        lista.map((r) => ({
+          id: r.id,
+          numero: r.numero,
+          hojaRuta: r.hojaRuta,
+          fechaSalida: r.fechaSalida,
+          conductor: r.conductor,
+          destino: r.destino,
+          patenteCamion: r.patenteCamion,
+          totalGeneral: r.totalGeneral,
+        })),
+      );
+    } finally {
+      this.cargandoCandidatos.set(false);
+    }
+  }
+
   private construir(): void {
     const d = this.dto();
     const form = construirFormulario(
@@ -186,7 +329,8 @@ export class ValeDinero {
   async guardar(): Promise<void> {
     const form = this.form();
     const r = this.resumen();
-    if (!form || !r) return;
+    const e = this.resumenEstadia();
+    if (!form || (!r && !e)) return;
     if (form.invalid) {
       form.markAllAsTouched();
       this.mensajes.add({
@@ -198,7 +342,11 @@ export class ValeDinero {
     }
     this.guardando.set(true);
     try {
-      const entrada = { ...aEntrada(this.campos, form), ordenRetiroId: r.id };
+      const entrada = {
+        ...aEntrada(this.campos, form),
+        ordenRetiroId: r?.id ?? null,
+        estadiaId: e?.id ?? null,
+      };
       const d = this.dto();
       const res = d
         ? await this.api.put<ValeDineroDto>(`vales-dinero/${d.id}`, entrada)

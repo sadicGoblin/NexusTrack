@@ -46,6 +46,10 @@ import { PrismaService, type Tx } from '../prisma/prisma.service.js';
 import { aArchivo, ExportacionService } from '../exportacion/exportacion.js';
 import type { OrdenCarga, Prisma } from '../generated/prisma/client.js';
 import {
+  renumerarHojasRuta,
+  reservarHojasRuta,
+} from './numeracion-hoja-ruta.js';
+import {
   aResumenRetiro,
   etiquetaEstado,
   includeRetiro,
@@ -250,18 +254,16 @@ export class OrdenesCargaService {
     return { lineas, totalNeto: lineas.reduce((s, l) => s + l.total, 0) };
   }
 
-  /** Al registrar las primeras guías se asigna el correlativo de hoja de ruta. */
-  private async hojaRuta(tx: Tx, actual: number | null, hayGuias: boolean) {
-    if (actual || !hayGuias)
-      return { hojaRuta: actual, guiasConfirmadas: undefined };
-    return {
-      hojaRuta: await this.secuencias.siguiente(tx, 'HOJA_RUTA'),
-      guiasConfirmadas: new Date(),
-    };
+  /** Lee la orden ya guardada: la renumeración de hojas de ruta pudo cambiar su N°. */
+  private async obtenerTx(tx: Tx, id: number): Promise<OrdenCargaDto> {
+    return aDto(
+      await tx.ordenCarga.findUniqueOrThrow({ where: { id }, include }),
+    );
   }
 
   async crear(dto: OrdenCargaDtoIn, u: UsuarioSesion): Promise<OrdenCargaDto> {
     return this.prisma.$transaction(async (tx) => {
+      await reservarHojasRuta(tx);
       const retiro = await tx.ordenRetiro.findUnique({
         where: { id: dto.ordenRetiroId },
         include: { camion: true, remolque: true },
@@ -278,7 +280,6 @@ export class OrdenesCargaService {
         retiro.clienteId,
       );
       const numero = await this.secuencias.siguiente(tx, 'ORDEN_CARGA');
-      const hr = await this.hojaRuta(tx, null, lineas.length > 0);
       const o = await tx.ordenCarga.create({
         data: {
           numero,
@@ -291,7 +292,7 @@ export class OrdenesCargaService {
           patenteCamion: retiro.camion.patente,
           patenteRemolque: retiro.remolque?.patente ?? null,
           totalNeto,
-          ...hr,
+          guiasConfirmadas: lineas.length ? new Date() : null,
           guias: { createMany: { data: lineas } },
           creadoPorId: u.id,
           actualizadoPorId: u.id,
@@ -309,10 +310,8 @@ export class OrdenesCargaService {
         usuarioId: u.id,
         cambios: { ...this.auditoria.instantanea(o), guias: lineas.length },
       });
-      return aDto({
-        ...o,
-        ordenRetiro: { ...o.ordenRetiro, estado: 'CON_CARGA' },
-      });
+      await renumerarHojasRuta(tx);
+      return this.obtenerTx(tx, o.id);
     });
   }
 
@@ -322,6 +321,7 @@ export class OrdenesCargaService {
     u: UsuarioSesion,
   ): Promise<OrdenCargaDto> {
     return this.prisma.$transaction(async (tx) => {
+      await reservarHojasRuta(tx);
       const antes = await tx.ordenCarga.findUnique({
         where: { id },
         include: { ordenRetiro: true, guias: true },
@@ -344,7 +344,6 @@ export class OrdenesCargaService {
         antes.ordenRetiro.clienteId,
         antes,
       );
-      const hr = await this.hojaRuta(tx, antes.hojaRuta, lineas.length > 0);
       await tx.guiaFlete.deleteMany({ where: { ordenCargaId: id } });
       const o = await tx.ordenCarga.update({
         where: { id },
@@ -355,7 +354,8 @@ export class OrdenesCargaService {
           packingCargaId: dto.packingCargaId ?? null,
           observaciones: dto.observaciones ?? null,
           totalNeto,
-          ...hr,
+          guiasConfirmadas:
+            antes.guiasConfirmadas ?? (lineas.length ? new Date() : null),
           guias: { createMany: { data: lineas } },
           actualizadoPorId: u.id,
         },
@@ -381,13 +381,15 @@ export class OrdenesCargaService {
         usuarioId: u.id,
         cambios,
       });
-      return aDto(o);
+      await renumerarHojasRuta(tx);
+      return this.obtenerTx(tx, o.id);
     });
   }
 
   /** Borra la orden y sus guías; la orden de retiro vuelve a quedar abierta. */
   async eliminar(id: number, u: UsuarioSesion): Promise<void> {
     await this.prisma.$transaction(async (tx) => {
+      await reservarHojasRuta(tx);
       const o = await tx.ordenCarga.findUnique({
         where: { id },
         include: {
@@ -420,6 +422,7 @@ export class OrdenesCargaService {
           guias: o.guias.map((g) => this.auditoria.instantanea(g)),
         },
       });
+      await renumerarHojasRuta(tx);
     });
   }
 
@@ -429,6 +432,7 @@ export class OrdenesCargaService {
     u: UsuarioSesion,
   ): Promise<OrdenCargaDto> {
     return this.prisma.$transaction(async (tx) => {
+      await reservarHojasRuta(tx);
       const antes = await tx.ordenCarga.findUnique({
         where: { id },
         include: {
@@ -466,7 +470,8 @@ export class OrdenesCargaService {
         usuarioId: u.id,
         cambios: { motivo },
       });
-      return aDto(o);
+      await renumerarHojasRuta(tx);
+      return this.obtenerTx(tx, o.id);
     });
   }
 
@@ -632,5 +637,6 @@ export class OrdenesCargaController {
 @Module({
   controllers: [OrdenesCargaController],
   providers: [OrdenesCargaService],
+  exports: [OrdenesCargaService],
 })
 export class OrdenesCargaModule {}

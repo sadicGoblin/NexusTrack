@@ -25,6 +25,7 @@ import { ValesDineroModule } from './documentos/vales-dinero.js';
 import { OrdenesCargaModule } from './documentos/ordenes-carga.js';
 import { ValesCombustibleModule } from './documentos/vales-combustible.js';
 import { RendicionesModule } from './documentos/rendiciones.js';
+import { HojasRutaModule } from './documentos/hojas-ruta.js';
 import { InicioModule } from './inicio/inicio.js';
 import { CuentasModule } from './cuentas/cuentas.js';
 import { InformesModule } from './informes/informes.js';
@@ -61,6 +62,7 @@ import { RecorridosModule } from './recorridos/recorridos.js';
     OrdenesCargaModule,
     ValesCombustibleModule,
     RendicionesModule,
+    HojasRutaModule,
     CuentasModule,
     InformesModule,
     RecorridosModule,

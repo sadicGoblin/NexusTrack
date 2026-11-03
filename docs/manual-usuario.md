@@ -63,11 +63,11 @@ Botón **Crear orden de carga** en la orden de retiro, o **Órdenes de carga →
 - El **tramo** lista las tarifas del cliente: primero las de la ruta de la orden. Las que no rigen a la fecha de carga aparecen con su fecha de vencimiento y un aviso; se actualizan en **Mantenedores → Rutas y tarifas**.
 - En **Guías del flete**, cada fila es una guía y un tramo. Al elegir el tramo se propone su valor unitario, que puede modificar. **Agregar guía** copia los datos de la fila anterior.
 - Si deja vacío el tramo de la cabecera, la orden toma el de la primera guía.
-- Al guardar con al menos una guía se asigna el **N° de hoja de ruta**.
+- Al guardar con al menos una guía se asigna el **N° de hoja de ruta** (ver Hojas de ruta).
 
 ### 3. Vale de dinero
 
-Anticipo para el viaje. Se crea desde la orden de retiro o desde **Vales de dinero → Nuevo**. El concepto por defecto es FLETE.
+Anticipo para el viaje. Se crea desde la orden de retiro o desde **Vales de dinero → Nuevo**. El concepto por defecto es FLETE. Para el anticipo de una **estadía**, en **Nuevo** elija **Estadía** y luego la estadía, o use **Entregar anticipo** en la misma estadía.
 
 Debajo aparece la **cuenta del conductor**: su saldo según los fletes ya rendidos, los anticipos ya entregados para esta orden y los de otros fletes que aún no rinde. Sirve para decidir cuánto entregarle.
 
@@ -88,6 +88,24 @@ Al final está la **cuenta del conductor**, que se recalcula mientras escribe: s
 
 **Recorrido GPS**: en la sección Viaje, el botón **Recorrido GPS** abre, sin salir de la rendición, el mapa con la ruta del camión entre la salida y la llegada anotadas (aunque todavía no se haya guardado). A la derecha se ven la distancia según el GPS junto a los kilómetros rendidos, el tiempo en movimiento y detenido, y la lista de viajes y paradas: haga clic en una para verla en el mapa. Con **± 1 h** o **± 3 h** se amplía el período, para revisar si las horas anotadas calzan con el GPS. Las paradas naranjas son con motor encendido y las grises con motor apagado. Si no hay llegada anotada, se muestran 2 días desde la salida.
 
+## Estadías
+
+**Operación → Estadías** registra los gastos del conductor mientras espera en un lugar, sin orden de carga ni de retiro. Una estadía es una rendición más: usa el mismo correlativo que las rendiciones de fletes y aparece también en **Rendiciones** (columna Tipo).
+
+- **Nueva estadía**: elija el **conductor** (el camión y el remolque se completan desde su asignación vigente y se pueden cambiar) y el **lugar de la estadía**, que es su destino; el origen es siempre **ESTADÍA**.
+- En **Período de la estadía** anote el **inicio** (obligatorio) y el término; los odómetros y horómetros son opcionales. Luego los gastos, viáticos y otros gastos, igual que en una rendición.
+- El anticipo se entrega con un **vale de dinero** de la estadía (botón **Entregar anticipo**). Anticipos y gastos entran a la cuenta del conductor como un flete más.
+- Recibe su **N° de hoja de ruta** según la fecha de inicio.
+- Para anular o eliminar una estadía, primero se anulan o eliminan sus vales.
+
+## Hojas de ruta
+
+**Operación → Hojas de ruta** lista una hoja por cada flete con guías y una por cada estadía, con las columnas de la planilla: N° hoja, fecha, origen, destino, chofer, patente y los gastos rendidos (total, peajes, carga y descarga, viáticos, varios y petróleo).
+
+- El **N° de hoja de ruta** es correlativo por **fecha de carga** (en una estadía, su fecha de inicio); en un mismo día, por hora y luego por orden de ingreso. Si se ingresa un flete o una estadía con fecha anterior, las hojas siguientes se corren en uno. Las anuladas salen de la numeración.
+- La numeración parte del valor de **Parámetros → HOJA_RUTA_INICIAL**, para continuar la de la planilla.
+- Haga clic en una hoja para ver su detalle: datos del viaje, enlaces a sus documentos, guías, orden de retiro, viaje y gastos rendidos, con **Recorrido GPS**, **PDF** y **Excel**. Si el flete aún no se rinde, ofrece **Crear rendición**.
+
 ## Cuentas de conductores
 
 **Operación → Cuentas de conductores** muestra el saldo de cada conductor que tiene anticipos o rendiciones.
@@ -97,7 +115,8 @@ Al final está la **cuenta del conductor**, que se recalcula mientras escribe: s
 - **En contra del conductor** (negativo): gastó más de lo anticipado y puso dinero propio.
 - No hay devoluciones ni transferencias aparte: el saldo se compensa con los anticipos siguientes.
 - Los fletes sin rendición no mueven el saldo: sus vales aparecen como **anticipos por rendir**.
-- Haga clic en un conductor para ver su cuenta flete a flete, y en un flete para abrir su orden de retiro.
+- Las **estadías** cuentan como un flete más: sus vales de dinero contra sus gastos.
+- Haga clic en un conductor para ver su cuenta flete a flete, y en un flete para abrir su orden de retiro (o la estadía).
 
 Los vales de combustible no entran en la cuenta: son combustible cargado, no dinero entregado al conductor.
 
@@ -107,7 +126,7 @@ Solo muestran información: se calculan con los documentos emitidos y no se ingr
 
 ### Control de fletes
 
-**Informes → Control de fletes**: una fila por flete (orden de carga no anulada), filtrada por la fecha de la orden de retiro, con las columnas de la planilla del cliente. Los botones **Por rendir** y **Rendidos** separan los fletes que aún no tienen rendición. Arriba están el valor de los fletes, el costo total, el margen y la rentabilidad del período; al pie de la grilla, la fila de totales, que también sale en el Excel y el PDF.
+**Informes → Control de fletes**: una fila por flete (orden de carga no anulada), filtrada por la fecha de la orden de retiro, con las columnas de la planilla del cliente. Las **estadías** aparecen como filas sin cliente ni valor de flete (solo sus anticipos y gastos) cuando no se filtra por un cliente. Los botones **Por rendir** y **Rendidos** separan los fletes que aún no tienen rendición. Arriba están el valor de los fletes, el costo total, el margen y la rentabilidad del período; al pie de la grilla, la fila de totales, que también sale en el Excel y el PDF.
 
 - **Distancia** y **Horómetro**: kilómetros y horas del motor del remolque según la rendición.
 - **Litros camión**, **litros remolque** y **Combustible**: de los vales de combustible emitidos.
@@ -149,5 +168,5 @@ Haga clic en un flete para abrir su rendición (o su orden de carga si aún no s
 
 - **Usuarios**: crear cuentas, asignar perfil, desactivar o cambiar la contraseña de otro usuario.
 - **Catálogos**: las listas de la hoja BaseDatos (ciudades, depósitos, trazabilidades, etc.). Tipos de móviles y categorías de empresa se pueden renombrar o desactivar, pero no ampliar, porque el sistema los usa en su lógica.
-- **Parámetros**: datos de la empresa que aparecen en los PDF, valor del litro de combustible por defecto, concepto por defecto de los vales y días de anticipación de las alertas de vencimiento.
+- **Parámetros**: datos de la empresa que aparecen en los PDF, valor del litro de combustible por defecto, concepto por defecto de los vales, días de anticipación de las alertas de vencimiento y N° de la primera hoja de ruta (**HOJA_RUTA_INICIAL**; al cambiarlo se renumeran todas).
 - **Auditoría**: quién creó, modificó, anuló, asignó o eliminó cada registro y cuándo. Cada fila muestra el documento por su número (o el móvil por su patente, la persona por su nombre). Al hacer clic se ve el detalle: en una modificación, cada campo con su valor anterior y el nuevo; en una eliminación, la copia de todos los datos, incluidas las guías, viáticos y gastos. **Abrir registro** lleva al documento.

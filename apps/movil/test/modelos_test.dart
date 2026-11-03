@@ -41,6 +41,29 @@ void main() {
     expect(r.totalGeneral, r.peajes + r.carga + r.descarga + r.totalViaticos + r.totalOtrosGastos);
   });
 
+  test('lee una estadía y su vale, sin orden de carga ni de retiro', () {
+    final r = Rendicion.desde({
+      ...leer('rendicion') as Json,
+      'tipo': 'ESTADIA',
+      'ordenCargaId': null,
+      'ordenCargaNumero': null,
+      'retiro': null,
+      'conductor': 'LUIS ENRIQUE GAETE PINO',
+      'origen': 'ESTADÍA',
+      'destino': 'SAN ANTONIO',
+    });
+    expect(r.esEstadia, isTrue);
+    expect(r.retiro, isNull);
+    expect(r.ordenCargaId, isNull);
+    final v = ValeDinero.desde({
+      ...(leer('vales-dinero') as List).cast<Json>().first,
+      'retiro': null,
+      'estadia': {'id': 3, 'numero': 7, 'destino': 'SAN ANTONIO', 'conductor': 'LUIS ENRIQUE GAETE PINO'},
+    });
+    expect(v.retiro, isNull);
+    expect(v.conductor, 'LUIS ENRIQUE GAETE PINO');
+  });
+
   test('lee la flota, con y sin asignación', () {
     final flota = (leer('flota') as List).cast<Json>().map(CamionFlota.desde).toList();
     expect(flota.where((c) => c.asignado), isNotEmpty);

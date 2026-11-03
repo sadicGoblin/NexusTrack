@@ -1,4 +1,4 @@
-@if (creando() && !carga()) {
+@if (creando() && !carga() && !esEstadia()) {
   <nt-barra-documento titulo="Nueva rendición" volver="/operacion/rendiciones" />
   <nt-selector-padre
     titulo="Órdenes de carga por rendir"
@@ -10,12 +10,12 @@
   />
 } @else {
   <nt-barra-documento
-    titulo="Rendición de fletes"
-    [subtitulo]="resumen() ? resumen()!.conductor + ' · ' + resumen()!.cliente : ''"
+    [titulo]="esEstadia() ? 'Rendición de estadía' : 'Rendición de fletes'"
+    [subtitulo]="subtitulo()"
     [numero]="dto()?.numero ?? null"
     [estado]="dto()?.estado ?? null"
     [recurso]="'rendiciones/' + dto()?.id"
-    volver="/operacion/rendiciones"
+    [volver]="listado()"
     [editable]="editable() && !!form()"
     [anulable]="dto()?.estado === 'EMITIDO'"
     [eliminable]="!!dto()"
@@ -38,6 +38,11 @@
     <section class="nt-tarjeta">
       <div class="nt-tarjeta-titulo">
         <h2>Orden de carga N° {{ c.numero | correlativo }}</h2>
+        @if (hojaRuta()) {
+          <a class="hoja" [routerLink]="['/operacion/hojas-ruta', idHojaRuta()]"
+            >Hoja de ruta N° {{ hojaRuta() | correlativo }}</a
+          >
+        }
       </div>
       <div class="nt-grilla">
         <nt-dato etiqueta="Tramo" [valor]="c.tramo" class="nt-ancho-2" />
@@ -69,6 +74,56 @@
     </section>
   }
 
+  @if (esEstadia()) {
+    @if (form(); as f) {
+      <section class="nt-tarjeta">
+        <div class="nt-tarjeta-titulo">
+          <h2>Estadía</h2>
+          <div class="acciones-estadia">
+            @if (hojaRuta()) {
+              <a class="hoja" [routerLink]="['/operacion/hojas-ruta', idHojaRuta()]"
+                >Hoja de ruta N° {{ hojaRuta() | correlativo }}</a
+              >
+            }
+            @if (puedeAnticipar()) {
+              <p-button
+                label="Entregar anticipo"
+                icon="pi pi-wallet"
+                size="small"
+                [outlined]="true"
+                routerLink="/operacion/vales-dinero/nuevo"
+                [queryParams]="{ estadia: dto()!.id }"
+                pTooltip="Vale de dinero para esta estadía"
+                tooltipPosition="left"
+              />
+            }
+          </div>
+        </div>
+        <div class="nt-grilla origen">
+          <nt-dato etiqueta="Origen" [valor]="origenEstadia" />
+        </div>
+        <nt-campos [form]="f" [campos]="camposEstadia" [soloLectura]="!editable()" />
+        @if (sugerencia()) {
+          <p class="nt-tenue sugerencia">{{ sugerencia() }}</p>
+        }
+        @if (valores().cabecera['remolqueId']) {
+          <div class="nt-dato motor" [formGroup]="f">
+            <span class="etiqueta" id="motor-remolque-estadia">Motor del remolque</span>
+            <p-selectbutton
+              formControlName="remolqueConMotor"
+              [options]="opcionesMotor"
+              optionLabel="label"
+              optionValue="value"
+              [allowEmpty]="true"
+              size="small"
+              ariaLabelledBy="motor-remolque-estadia"
+            />
+          </div>
+        }
+      </section>
+    }
+  }
+
   @if (resumen(); as r) {
     <nt-resumen-retiro [retiro]="r" />
   }
@@ -76,7 +131,7 @@
   @if (form(); as f) {
     <section class="nt-tarjeta">
       <div class="nt-tarjeta-titulo">
-        <h2>Viaje</h2>
+        <h2>{{ esEstadia() ? 'Período de la estadía' : 'Viaje' }}</h2>
         <p-button
           label="Recorrido GPS"
           icon="pi pi-map"
@@ -88,12 +143,12 @@
           tooltipPosition="left"
         />
       </div>
-      <nt-campos [form]="f" [campos]="camposViaje" [columnas]="5" [soloLectura]="!editable()" />
+      <nt-campos [form]="f" [campos]="camposViaje()" [columnas]="5" [soloLectura]="!editable()" />
     </section>
     @if (salidaGps(); as salida) {
       <nt-recorrido-gps
         [(visible)]="mostrarRecorrido"
-        [patente]="cabecera()?.patenteCamion ?? ''"
+        [patente]="patenteGps()"
         [salida]="salida"
         [llegada]="llegadaGps()"
         [kmRendidos]="totales().kmRecorridos"
@@ -368,11 +423,11 @@
       </div>
     </section>
 
-    @if (resumen(); as r) {
+    @if (conductorCuenta(); as conductorId) {
       @if (dto()?.estado !== 'ANULADO') {
         <nt-cuenta-conductor
-          [conductorId]="r.conductorId"
-          [ordenRetiroId]="r.id"
+          [conductorId]="conductorId"
+          [clave]="claveCuenta()"
           [totalRendicion]="totales().totalGeneral"
           [recargar]="dto()"
         />
@@ -382,6 +437,26 @@
 }
 
 <style>
+  .origen {
+    margin-bottom: 0.75rem;
+  }
+  .acciones-estadia {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .hoja {
+    font-size: 0.85rem;
+    text-decoration: none;
+    color: var(--p-primary-color);
+  }
+  .sugerencia {
+    font-size: 0.82rem;
+    margin: 0.5rem 0 0;
+  }
+  .motor {
+    margin-top: 0.75rem;
+  }
   .aviso {
     display: block;
     margin-bottom: 1rem;

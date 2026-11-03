@@ -75,7 +75,7 @@ class PantallaFletes extends StatelessWidget {
             unidad: 'rendiciones',
             singular: 'rendición',
             buscable: (r) =>
-                '${r.numero} ${r.ordenCargaNumero} ${r.retiro.cliente} ${r.retiro.conductor} ${r.patenteCamion}',
+                '${r.numero} ${r.ordenCargaNumero ?? ''} ${r.retiro?.cliente ?? ''} ${r.conductor} ${r.destino} ${r.patenteCamion}',
             total: (l) => pesos(
               l.where((r) => r.estado != 'ANULADO').fold<int>(0, (s, r) => s + r.totalGeneral),
             ),
@@ -84,9 +84,11 @@ class PantallaFletes extends StatelessWidget {
               estado: r.estado,
               monto: pesos(r.totalGeneral),
               lineas: [
-                r.retiro.cliente,
-                'Orden de carga N° ${correlativo(r.ordenCargaNumero)} · ${fecha(r.fecha)}',
-                '${r.retiro.conductor} · ${_vehiculo(r.patenteCamion, r.patenteRemolque)}',
+                r.retiro?.cliente ?? 'Estadía en ${r.destino}',
+                r.ordenCargaNumero == null
+                    ? 'Estadía · ${fecha(r.fecha)}'
+                    : 'Orden de carga N° ${correlativo(r.ordenCargaNumero)} · ${fecha(r.fecha)}',
+                '${r.conductor} · ${_vehiculo(r.patenteCamion, r.patenteRemolque)}',
               ],
               alTocar: () => context.push('/rendiciones/${r.id}'),
             ),
@@ -121,7 +123,7 @@ class PantallaVales extends StatelessWidget {
             unidad: 'vales de dinero',
             singular: 'vale de dinero',
             buscable: (v) =>
-                '${v.numero} ${v.retiro.numero} ${v.retiro.conductor} ${v.retiro.cliente} ${v.sitioEntrega}',
+                '${v.numero} ${v.retiro?.numero ?? ''} ${v.conductor} ${v.retiro?.cliente ?? ''} ${v.sitioEntrega}',
             total: (l) =>
                 pesos(l.where((v) => v.estado != 'ANULADO').fold<int>(0, (s, v) => s + v.monto)),
             tarjeta: (v) => TarjetaDocumento(
@@ -129,8 +131,10 @@ class PantallaVales extends StatelessWidget {
               estado: v.estado,
               monto: pesos(v.monto),
               lineas: [
-                v.retiro.conductor,
-                'Retiro N° ${correlativo(v.retiro.numero)} · ${v.retiro.cliente}',
+                v.conductor,
+                v.retiro != null
+                    ? 'Retiro N° ${correlativo(v.retiro!.numero)} · ${v.retiro!.cliente}'
+                    : 'Estadía N° ${correlativo(v.estadia?.numero)} · ${v.estadia?.destino ?? ''}',
                 'Entregado el ${fecha(v.fechaEntrega)} en ${v.sitioEntrega} · ${v.formaPago}',
               ],
               alTocar: () => context.push('/vales-dinero/${v.id}'),

@@ -9,6 +9,7 @@ import {
 import { ApiTags } from '@nestjs/swagger';
 import {
   armarCuenta,
+  ORIGEN_ESTADIA,
   resumirCuenta,
   type CuentaConductorDto,
   type DetalleCuentaDto,
@@ -43,6 +44,22 @@ const seleccion = {
     },
   },
 } satisfies Prisma.OrdenRetiroSelect;
+
+/** Una estadía emitida es su propia rendición; sus anticipos son los vales que la apuntan. */
+const seleccionEstadia = {
+  id: true,
+  numero: true,
+  fecha: true,
+  fechaSalida: true,
+  totalGeneral: true,
+  conductorId: true,
+  destino: { select: { valor: true } },
+  valesDinero: {
+    where: { estado: 'EMITIDO' },
+    select: { id: true, numero: true, fechaEntrega: true, monto: true },
+    orderBy: { numero: 'asc' },
+  },
+} satisfies Prisma.RendicionSelect;
 
 const conductorSeleccion = {
   id: true,
@@ -80,24 +97,61 @@ export class CuentasService {
       },
       select: seleccion,
     });
-    return filas.map((o) => {
+    const estadias = await this.prisma.rendicion.findMany({
+      where: {
+        tipo: 'ESTADIA',
+        estado: 'EMITIDO',
+        ...(conductorId ? { conductorId } : {}),
+      },
+      select: seleccionEstadia,
+    });
+    const vales = (
+      lista: {
+        id: number;
+        numero: number;
+        fechaEntrega: Date;
+        monto: number;
+      }[],
+    ) =>
+      lista.map((v) => ({
+        id: v.id,
+        numero: v.numero,
+        fecha: aIso(v.fechaEntrega)!,
+        monto: v.monto,
+      }));
+    const deEstadias = estadias.map((e) => ({
+      conductorId: e.conductorId!,
+      flete: {
+        clave: `E${e.id}`,
+        tipo: 'ESTADIA' as const,
+        ordenRetiroId: null,
+        ordenRetiroNumero: null,
+        fecha: aIso(e.fechaSalida)!,
+        cliente: null,
+        origen: ORIGEN_ESTADIA,
+        destino: e.destino!.valor,
+        vales: vales(e.valesDinero),
+        rendicionId: e.id,
+        rendicionNumero: e.numero,
+        fechaRendicion: aIso(e.fecha),
+        rendido: e.totalGeneral,
+      },
+    }));
+    const deFletes = filas.map((o) => {
       const rendiciones = o.ordenesCarga.flatMap((c) => c.rendiciones);
       const r = rendiciones[0];
       return {
         conductorId: o.conductorId,
         flete: {
+          clave: `R${o.id}`,
+          tipo: 'FLETE' as const,
           ordenRetiroId: o.id,
           ordenRetiroNumero: o.numero,
-          fechaRetiro: aIso(o.fecha)!,
+          fecha: aIso(o.fecha)!,
           cliente: o.cliente.nombre,
           origen: o.origen.valor,
           destino: o.destino.valor,
-          vales: o.valesDinero.map((v) => ({
-            id: v.id,
-            numero: v.numero,
-            fecha: aIso(v.fechaEntrega)!,
-            monto: v.monto,
-          })),
+          vales: vales(o.valesDinero),
           rendicionId: r?.id ?? null,
           rendicionNumero: r?.numero ?? null,
           fechaRendicion: r ? aIso(r.fecha) : null,
@@ -107,6 +161,7 @@ export class CuentasService {
         },
       };
     });
+    return [...deFletes, ...deEstadias];
   }
 
   /** Conductores con anticipos o rendiciones, con su saldo. */

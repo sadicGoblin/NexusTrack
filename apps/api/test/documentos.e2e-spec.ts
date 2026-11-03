@@ -353,7 +353,8 @@ describe('Documentos operativos: flujo completo', () => {
         })
         .expect(200)
     ).body;
-    expect(conGuias.hojaRuta).toBe(2);
+    // La orden de carga de la prueba anterior quedó anulada: sale de la numeración.
+    expect(conGuias.hojaRuta).toBe(1);
     const porRendir = (await c.get('/ordenes-carga?porRendir=true').expect(200))
       .body;
     expect(porRendir.map((x: { id: number }) => x.id)).toContain(oc.id);
@@ -705,7 +706,8 @@ describe('Documentos operativos: flujo completo', () => {
     ).body;
     expect(control).toHaveLength(1);
     expect(control[0]).toMatchObject({
-      id: oc.id,
+      id: `C${oc.id}`,
+      ordenCargaId: oc.id,
       estado: 'RENDIDA',
       ordenRetiro: or.numero,
       rendicion: rendicion.numero,
@@ -784,5 +786,167 @@ describe('Documentos operativos: flujo completo', () => {
         totales: { margen: control[0].margen },
       })
       .expect(201);
+  });
+
+  it('numera las hojas de ruta por fecha e incluye las estadías con sus vales', async () => {
+    const conGuia = async (fecha: string) => {
+      const or = await nuevaOrdenRetiro(fecha);
+      return (
+        await c
+          .post('/ordenes-carga', {
+            ordenRetiroId: or.id,
+            fechaCarga: fecha,
+            guias: [guia(rutas.contenedor, 'VIAJE')],
+          })
+          .expect(201)
+      ).body;
+    };
+    const hoja = async (clave: string) =>
+      (await c.get(`/hojas-ruta/${clave}`).expect(200)).body.numero as number;
+
+    const posterior = await conGuia('2026-07-10');
+    // Ingresada después pero cargada antes: toma el N° anterior y corre al otro.
+    const anterior = await conGuia('2026-07-05');
+    expect(anterior.hojaRuta).toBe(posterior.hojaRuta);
+    expect(await hoja(`C${posterior.id}`)).toBe(anterior.hojaRuta + 1);
+
+    const sug = (
+      await c
+        .get(`/asignaciones/sugerencia?conductorId=${base.conductor}`)
+        .expect(200)
+    ).body;
+    const estadia = (
+      await c
+        .post('/rendiciones', {
+          tipo: 'ESTADIA',
+          conductorId: base.conductor,
+          camionId: sug.camionId,
+          remolqueId: sug.remolqueId,
+          destinoId: id('CIUDAD', 'SAN ANTONIO'),
+          fecha: '2026-07-08',
+          fechaSalida: '2026-07-07',
+          viaticos: [{ fecha: '2026-07-07', almuerzo: 8000 }],
+          gastos: [],
+        })
+        .expect(201)
+    ).body;
+    expect(estadia).toMatchObject({
+      tipo: 'ESTADIA',
+      ordenCargaId: null,
+      origen: 'ESTADÍA',
+      destino: 'SAN ANTONIO',
+      patenteCamion: 'DRXR59',
+      totalGeneral: 8000,
+      hojaRuta: anterior.hojaRuta + 1,
+    });
+    expect(await hoja(`C${posterior.id}`)).toBe(anterior.hojaRuta + 2);
+    // Una estadía necesita conductor, camión, lugar e inicio.
+    await c
+      .post('/rendiciones', {
+        tipo: 'ESTADIA',
+        conductorId: base.conductor,
+        fecha: '2026-07-08',
+        viaticos: [],
+        gastos: [],
+      })
+      .expect(400);
+
+    const julio = '?desde=2026-07-01&hasta=2026-07-31';
+    const hojas = (await c.get(`/hojas-ruta${julio}`).expect(200)).body;
+    expect(
+      hojas.map((h: { tipo: string; origen: string; destino: string }) => [
+        h.tipo,
+        h.origen,
+        h.destino,
+      ]),
+    ).toEqual([
+      ['FLETE', 'TALCA', 'VALPARAISO'],
+      ['ESTADIA', 'ESTADÍA', 'SAN ANTONIO'],
+      ['FLETE', 'TALCA', 'VALPARAISO'],
+    ]);
+    expect(hojas[1]).toMatchObject({ totalGastos: 8000, viaticos: 8000 });
+
+    // Anticipo de la estadía: vale de dinero que apunta a ella (nunca a ambas).
+    const vale = (
+      await c
+        .post('/vales-dinero', {
+          estadiaId: estadia.id,
+          fechaEntrega: '2026-07-07',
+          sitioEntregaId: id('SITIO_ENTREGA', 'CURICO'),
+          monto: 20000,
+          formaPagoId: id('FORMA_PAGO', 'EFECTIVO'),
+        })
+        .expect(201)
+    ).body;
+    expect(vale).toMatchObject({
+      retiro: null,
+      estadia: { id: estadia.id, destino: 'SAN ANTONIO' },
+    });
+    await c
+      .post('/vales-dinero', {
+        ordenRetiroId: anterior.ordenRetiroId,
+        estadiaId: estadia.id,
+        fechaEntrega: '2026-07-07',
+        sitioEntregaId: id('SITIO_ENTREGA', 'CURICO'),
+        monto: 1,
+        formaPagoId: id('FORMA_PAGO', 'EFECTIVO'),
+      })
+      .expect(400);
+
+    const cuenta = (
+      await c.get(`/cuentas-conductores/${base.conductor}`).expect(200)
+    ).body;
+    expect(
+      cuenta.fletes.find(
+        (f: { clave: string }) => f.clave === `E${estadia.id}`,
+      ),
+    ).toMatchObject({ anticipos: 20000, rendido: 8000, resultado: 12000 });
+
+    const control = (
+      await c.get(`/informes/control-fletes${julio}`).expect(200)
+    ).body;
+    expect(
+      control.find((f: { tipo: string }) => f.tipo === 'ESTADIA'),
+    ).toMatchObject({
+      cliente: null,
+      tramo: 'ESTADÍA - SAN ANTONIO',
+      anticipo: 20000,
+      totalGastos: 8000,
+      valorFlete: 0,
+      margen: -8000,
+    });
+    expect(
+      (
+        await c
+          .get(`/informes/control-fletes${julio}&clienteId=${base.cliente}`)
+          .expect(200)
+      ).body.map((f: { tipo: string }) => f.tipo),
+    ).toEqual(['FLETE', 'FLETE']);
+
+    const pdf = await c.get(`/hojas-ruta/E${estadia.id}/pdf`).expect(200);
+    expect(pdf.headers['content-disposition']).toMatch(/hoja-ruta-0+\d+\.pdf/);
+
+    // Del hijo al padre: el vale antes que la estadía. Anulada, sale de la numeración.
+    expect(
+      (await c.post(`/rendiciones/${estadia.id}/anular`, { motivo: 'prueba' }))
+        .body.message,
+    ).toMatch(/vale de dinero N°/);
+    await c
+      .post(`/vales-dinero/${vale.id}/anular`, { motivo: 'prueba' })
+      .expect(201);
+    await c
+      .post(`/rendiciones/${estadia.id}/anular`, { motivo: 'prueba' })
+      .expect(201);
+    await c.get(`/hojas-ruta/E${estadia.id}`).expect(404);
+    expect(await hoja(`C${posterior.id}`)).toBe(anterior.hojaRuta + 1);
+
+    // El N° inicial continúa la numeración de la planilla.
+    await c
+      .put('/parametros/HOJA_RUTA_INICIAL', { valor: '25332' })
+      .expect(200);
+    const primera = (await c.get('/hojas-ruta').expect(200)).body.at(-1);
+    expect(primera.numero).toBe(25332);
+    await c.put('/parametros/HOJA_RUTA_INICIAL', { valor: 'abc' }).expect(400);
+    await c.put('/parametros/HOJA_RUTA_INICIAL', { valor: '1' }).expect(200);
   });
 });

@@ -57,6 +57,11 @@ const PARAMETROS: { clave: string; valor: string; descripcion: string }[] = [
     descripcion: 'Concepto por defecto de los vales de dinero.',
   },
   {
+    clave: 'HOJA_RUTA_INICIAL',
+    valor: '1',
+    descripcion: 'N° de la primera hoja de ruta (para continuar la numeración de la planilla).',
+  },
+  {
     clave: 'DIAS_ALERTA_VENCIMIENTO',
     valor: '30',
     descripcion: 'Días de anticipación para alertar vencimientos de documentos de móviles y licencias.',

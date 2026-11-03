@@ -68,6 +68,13 @@ enum EstadoDocumento {
   ANULADO
 }
 
+/// Rendición de un flete (con orden de carga) o de una estadía (gastos del conductor mientras
+/// espera en un lugar, sin orden de carga). Comparten correlativo.
+enum TipoRendicion {
+  FLETE
+  ESTADIA
+}
+
 enum TipoSecuencia {
   ORDEN_RETIRO
   VALE_DINERO
@@ -82,18 +89,18 @@ enum TipoSecuencia {
 // ───────────────────────────── Acceso y sistema ─────────────────────────────
 
 model Usuario {
-  id               Int         @id @default(autoincrement())
-  email            String      @unique
-  nombre           String
-  passwordHash     String
-  rol              Rol
-  activo           Boolean     @default(true)
+  id            Int         @id @default(autoincrement())
+  email         String      @unique
+  nombre        String
+  passwordHash  String
+  rol           Rol
+  activo        Boolean     @default(true)
   /// Se incrementa al cambiar la contraseña o desactivar el usuario: invalida todas sus sesiones.
-  versionToken     Int         @default(0)
-  ultimoAcceso     DateTime?
-  creadoEn         DateTime    @default(now())
-  actualizadoEn    DateTime    @updatedAt
-  auditorias       Auditoria[]
+  versionToken  Int         @default(0)
+  ultimoAcceso  DateTime?
+  creadoEn      DateTime    @default(now())
+  actualizadoEn DateTime    @updatedAt
+  auditorias    Auditoria[]
 }
 
 model Auditoria {
@@ -141,28 +148,29 @@ model CatalogoItem {
   creadoPorId      Int?
   actualizadoPorId Int?
 
-  empresasCategoria         Empresa[]         @relation("EmpresaCategoria")
-  movilesTipo               Movil[]           @relation("MovilTipo")
-  rutasOrigen               RutaTarifa[]      @relation("RutaOrigen")
-  rutasDestino              RutaTarifa[]      @relation("RutaDestino")
-  rutasUnidad               RutaTarifa[]      @relation("RutaUnidad")
-  retirosTrazabilidad       OrdenRetiro[]     @relation("RetiroTrazabilidad")
-  retirosOrigen             OrdenRetiro[]     @relation("RetiroOrigen")
-  retirosDestino            OrdenRetiro[]     @relation("RetiroDestino")
-  retirosDepositoRetiro     OrdenRetiro[]     @relation("RetiroDepositoRetiro")
-  retirosDepositoEntrega    OrdenRetiro[]     @relation("RetiroDepositoEntrega")
-  retirosPuerto             OrdenRetiro[]     @relation("RetiroPuerto")
-  valesDineroSitio          ValeDinero[]      @relation("ValeDineroSitio")
-  valesDineroFormaPago      ValeDinero[]      @relation("ValeDineroFormaPago")
-  guiasEspecie              GuiaFlete[]       @relation("GuiaEspecie")
-  guiasUmEspecie            GuiaFlete[]       @relation("GuiaUmEspecie")
-  guiasUmTarifa             GuiaFlete[]       @relation("GuiaUmTarifa")
-  combustibleSitio          ValeCombustible[] @relation("CombustibleSitio")
-  combustibleFormaPago      ValeCombustible[] @relation("CombustibleFormaPago")
-  combustibleTipoDocumento  ValeCombustible[] @relation("CombustibleTipoDocumento")
-  rendicionesSitio          Rendicion[]       @relation("RendicionSitio")
-  gastosTipoDocumento       RendicionGasto[]  @relation("GastoTipoDocumento")
-  gastosItem                RendicionGasto[]  @relation("GastoItem")
+  empresasCategoria        Empresa[]         @relation("EmpresaCategoria")
+  movilesTipo              Movil[]           @relation("MovilTipo")
+  rutasOrigen              RutaTarifa[]      @relation("RutaOrigen")
+  rutasDestino             RutaTarifa[]      @relation("RutaDestino")
+  rutasUnidad              RutaTarifa[]      @relation("RutaUnidad")
+  retirosTrazabilidad      OrdenRetiro[]     @relation("RetiroTrazabilidad")
+  retirosOrigen            OrdenRetiro[]     @relation("RetiroOrigen")
+  retirosDestino           OrdenRetiro[]     @relation("RetiroDestino")
+  retirosDepositoRetiro    OrdenRetiro[]     @relation("RetiroDepositoRetiro")
+  retirosDepositoEntrega   OrdenRetiro[]     @relation("RetiroDepositoEntrega")
+  retirosPuerto            OrdenRetiro[]     @relation("RetiroPuerto")
+  valesDineroSitio         ValeDinero[]      @relation("ValeDineroSitio")
+  valesDineroFormaPago     ValeDinero[]      @relation("ValeDineroFormaPago")
+  guiasEspecie             GuiaFlete[]       @relation("GuiaEspecie")
+  guiasUmEspecie           GuiaFlete[]       @relation("GuiaUmEspecie")
+  guiasUmTarifa            GuiaFlete[]       @relation("GuiaUmTarifa")
+  combustibleSitio         ValeCombustible[] @relation("CombustibleSitio")
+  combustibleFormaPago     ValeCombustible[] @relation("CombustibleFormaPago")
+  combustibleTipoDocumento ValeCombustible[] @relation("CombustibleTipoDocumento")
+  rendicionesSitio         Rendicion[]       @relation("RendicionSitio")
+  rendicionesDestino       Rendicion[]       @relation("RendicionDestino")
+  gastosTipoDocumento      RendicionGasto[]  @relation("GastoTipoDocumento")
+  gastosItem               RendicionGasto[]  @relation("GastoItem")
 
   @@unique([tipo, valor])
   @@index([tipo, orden])
@@ -261,6 +269,8 @@ model Movil {
   retirosRemolque        OrdenRetiro[]     @relation("RetiroRemolque")
   combustibleCamion      ValeCombustible[] @relation("CombustibleCamion")
   combustibleRemolque    ValeCombustible[] @relation("CombustibleRemolque")
+  estadiasCamion         Rendicion[]       @relation("EstadiaCamion")
+  estadiasRemolque       Rendicion[]       @relation("EstadiaRemolque")
 }
 
 model Conductor {
@@ -288,6 +298,7 @@ model Conductor {
 
   asignaciones  Asignacion[]
   ordenesRetiro OrdenRetiro[]
+  estadias      Rendicion[]
 }
 
 /// Configuración camión + conductor + remolques. Una fila con fechaTermino nula es la
@@ -408,11 +419,14 @@ model OrdenRetiro {
   @@index([estado])
 }
 
+/// Anticipo de un flete (orden de retiro) o de una estadía: siempre uno de los dos.
 model ValeDinero {
   id               Int             @id @default(autoincrement())
   numero           Int             @unique
-  ordenRetiroId    Int
-  ordenRetiro      OrdenRetiro     @relation(fields: [ordenRetiroId], references: [id])
+  ordenRetiroId    Int?
+  ordenRetiro      OrdenRetiro?    @relation(fields: [ordenRetiroId], references: [id], onDelete: Restrict)
+  estadiaId        Int?
+  estadia          Rendicion?      @relation("ValeEstadia", fields: [estadiaId], references: [id], onDelete: Restrict)
   fechaEntrega     DateTime        @db.Date
   concepto         String          @default("FLETE")
   glosa            String?
@@ -431,6 +445,7 @@ model ValeDinero {
 
   @@index([fechaEntrega])
   @@index([ordenRetiroId])
+  @@index([estadiaId])
 }
 
 model OrdenCarga {
@@ -449,8 +464,9 @@ model OrdenCarga {
   /// Copias de la orden de retiro al momento de emitir.
   patenteCamion    String
   patenteRemolque  String?
-  /// Correlativo de hoja de ruta, asignado al confirmar las guías.
-  hojaRuta         Int?             @unique
+  /// N° de hoja de ruta: posición por fecha de carga entre fletes con guías y estadías
+  /// (función renumerar_hojas_ruta). Cambia si se ingresa uno con fecha anterior.
+  hojaRuta         Int?
   guiasConfirmadas DateTime?
   totalNeto        Int              @default(0)
   observaciones    String?
@@ -466,6 +482,7 @@ model OrdenCarga {
 
   @@index([fechaCarga])
   @@index([ordenRetiroId])
+  @@index([hojaRuta])
 }
 
 model GuiaFlete {
@@ -534,14 +551,27 @@ model ValeCombustible {
 }
 
 model Rendicion {
-  id               Int              @id @default(autoincrement())
-  numero           Int              @unique
-  ordenCargaId     Int
-  ordenCarga       OrdenCarga       @relation(fields: [ordenCargaId], references: [id])
-  fecha            DateTime         @db.Date
-  fechaSalida      DateTime?        @db.Date
+  id               Int             @id @default(autoincrement())
+  numero           Int             @unique
+  tipo             TipoRendicion   @default(FLETE)
+  /// Solo fletes. La estadía no tiene orden de carga ni de retiro.
+  ordenCargaId     Int?
+  ordenCarga       OrdenCarga?     @relation(fields: [ordenCargaId], references: [id], onDelete: Restrict)
+  /// Solo estadías: conductor, equipo y lugar de la estadía (destino; el origen es «ESTADÍA»).
+  conductorId      Int?
+  conductor        Conductor?      @relation(fields: [conductorId], references: [id], onDelete: Restrict)
+  camionId         Int?
+  camion           Movil?          @relation("EstadiaCamion", fields: [camionId], references: [id], onDelete: Restrict)
+  remolqueId       Int?
+  remolque         Movil?          @relation("EstadiaRemolque", fields: [remolqueId], references: [id], onDelete: Restrict)
+  destinoId        Int?
+  destino          CatalogoItem?   @relation("RendicionDestino", fields: [destinoId], references: [id], onDelete: Restrict)
+  /// N° de hoja de ruta de la estadía, por su fecha de inicio (los fletes lo llevan en la orden de carga).
+  hojaRuta         Int?
+  fecha            DateTime        @db.Date
+  fechaSalida      DateTime?       @db.Date
   horaSalida       String?
-  fechaLlegada     DateTime?        @db.Date
+  fechaLlegada     DateTime?       @db.Date
   horaLlegada      String?
   odometroInicial  Int?
   odometroFinal    Int?
@@ -553,30 +583,33 @@ model Rendicion {
   /// Lo indica el conductor: si el motor del remolque funcionó durante el flete (se cobra aparte).
   remolqueConMotor Boolean?
   observaciones    String?
-  fechaEntrega     DateTime?        @db.Date
+  fechaEntrega     DateTime?       @db.Date
   sitioEntregaId   Int?
-  sitioEntrega     CatalogoItem?    @relation("RendicionSitio", fields: [sitioEntregaId], references: [id])
-  peajes           Int              @default(0)
-  carga            Int              @default(0)
-  descarga         Int              @default(0)
+  sitioEntrega     CatalogoItem?   @relation("RendicionSitio", fields: [sitioEntregaId], references: [id])
+  peajes           Int             @default(0)
+  carga            Int             @default(0)
+  descarga         Int             @default(0)
   /// Petróleo pagado en ruta con el anticipo.
-  petroleo         Int              @default(0)
-  totalViaticos    Int              @default(0)
-  totalOtrosGastos Int              @default(0)
-  totalGeneral     Int              @default(0)
-  estado           EstadoDocumento  @default(EMITIDO)
+  petroleo         Int             @default(0)
+  totalViaticos    Int             @default(0)
+  totalOtrosGastos Int             @default(0)
+  totalGeneral     Int             @default(0)
+  estado           EstadoDocumento @default(EMITIDO)
   motivoAnulacion  String?
   anuladoEn        DateTime?
-  creadoEn         DateTime         @default(now())
-  actualizadoEn    DateTime         @updatedAt
+  creadoEn         DateTime        @default(now())
+  actualizadoEn    DateTime        @updatedAt
   creadoPorId      Int?
   actualizadoPorId Int?
 
-  viaticos RendicionViatico[]
-  gastos   RendicionGasto[]
+  viaticos    RendicionViatico[]
+  gastos      RendicionGasto[]
+  valesDinero ValeDinero[]       @relation("ValeEstadia")
 
   @@index([fecha])
   @@index([ordenCargaId])
+  @@index([tipo, fechaSalida])
+  @@index([conductorId])
 }
 
 model RendicionViatico {

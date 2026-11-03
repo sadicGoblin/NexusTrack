@@ -13,6 +13,7 @@ import {
   calcularControlFlete,
   comisionFlete,
   formatearFecha,
+  ORIGEN_ESTADIA,
   type DatosControlFlete,
   type FilaControlFleteDto,
   type FiltroInforme,
@@ -84,6 +85,32 @@ type CargaControl = Prisma.OrdenCargaGetPayload<{
   select: typeof seleccionControl;
 }>;
 
+/** Una estadía en el control: sus anticipos y gastos, sin cliente ni valor de flete. */
+const seleccionEstadia = {
+  id: true,
+  numero: true,
+  fechaSalida: true,
+  fechaLlegada: true,
+  kmRecorridos: true,
+  horasMotor: true,
+  peajes: true,
+  carga: true,
+  descarga: true,
+  petroleo: true,
+  totalViaticos: true,
+  totalOtrosGastos: true,
+  conductor: { select: { nombre: true } },
+  destino: { select: { valor: true } },
+  valesDinero: {
+    where: { estado: 'EMITIDO' },
+    select: { numero: true, monto: true },
+    orderBy: { numero: 'asc' },
+  },
+} satisfies Prisma.RendicionSelect;
+type EstadiaControl = Prisma.RendicionGetPayload<{
+  select: typeof seleccionEstadia;
+}>;
+
 const seleccionFacturacion = {
   id: true,
   numero: true,
@@ -136,7 +163,9 @@ function aFilaControl(c: CargaControl): FilaControlFleteDto {
     valorFlete: c.totalNeto,
   };
   return {
-    id: c.id,
+    id: `C${c.id}`,
+    tipo: 'FLETE',
+    ordenCargaId: c.id,
     ordenRetiroId: o.id,
     rendicionId: r?.id ?? null,
     estado: c.estado,
@@ -151,6 +180,47 @@ function aFilaControl(c: CargaControl): FilaControlFleteDto {
     cliente: o.cliente.nombre,
     tramo: tramoDeCarga(c.tramo?.tramo, c.guias),
     numerosAnticipo: o.valesDinero
+      .map((v) => String(v.numero).padStart(6, '0'))
+      .join(', '),
+    ...datos,
+    ...calcularControlFlete(datos),
+  };
+}
+
+function aFilaEstadia(e: EstadiaControl): FilaControlFleteDto {
+  const datos: DatosControlFlete = {
+    distancia: e.kmRecorridos,
+    litrosCamion: 0,
+    litrosRemolque: 0,
+    horometro: e.horasMotor,
+    anticipo: sumar(e.valesDinero, (v) => v.monto),
+    peajes: e.peajes,
+    viatico: e.totalViaticos,
+    cargaDescarga: e.carga + e.descarga,
+    petroleo: e.petroleo,
+    otrosGastos: e.totalOtrosGastos,
+    combustible: 0,
+    comisiones: 0,
+    valorFlete: 0,
+  };
+  return {
+    id: `E${e.id}`,
+    tipo: 'ESTADIA',
+    ordenCargaId: null,
+    ordenRetiroId: null,
+    rendicionId: e.id,
+    estado: 'RENDIDA',
+    conductor: e.conductor!.nombre,
+    fecha: aIso(e.fechaSalida)!,
+    ordenRetiro: null,
+    ordenCarga: null,
+    rendicion: e.numero,
+    fechaInicio: aIso(e.fechaSalida),
+    fechaTermino: aIso(e.fechaLlegada),
+    clienteId: null,
+    cliente: null,
+    tramo: `${ORIGEN_ESTADIA} - ${e.destino!.valor}`,
+    numerosAnticipo: e.valesDinero
       .map((v) => String(v.numero).padStart(6, '0'))
       .join(', '),
     ...datos,
@@ -220,8 +290,22 @@ export class InformesService {
     private readonly exportacion: ExportacionService,
   ) {}
 
-  /** Una fila por flete (orden de carga), filtrado por la fecha de la orden de retiro. */
+  /**
+   * Una fila por flete (orden de carga), filtrado por la fecha de la orden de retiro, y una por
+   * estadía (por su fecha de inicio). Las estadías no tienen cliente: al filtrar por uno no entran.
+   */
   async controlFletes(f: FiltroInforme): Promise<FilaControlFleteDto[]> {
+    const estadias = f.clienteId
+      ? []
+      : await this.prisma.rendicion.findMany({
+          where: {
+            tipo: 'ESTADIA',
+            estado: 'EMITIDO',
+            fechaSalida: rangoFechas(f.desde, f.hasta),
+          },
+          select: seleccionEstadia,
+          take: 5000,
+        });
     const cargas = await this.prisma.ordenCarga.findMany({
       where: {
         estado: { not: 'ANULADA' },
@@ -234,7 +318,11 @@ export class InformesService {
       orderBy: [{ ordenRetiro: { fecha: 'asc' } }, { numero: 'asc' }],
       take: 5000,
     });
-    return cargas.map(aFilaControl);
+    return [...cargas.map(aFilaControl), ...estadias.map(aFilaEstadia)].sort(
+      (a, b) =>
+        a.fecha.localeCompare(b.fecha) ||
+        a.id.localeCompare(b.id, 'es', { numeric: true }),
+    );
   }
 
   /** Órdenes de carga con guías en el período (por fecha de carga), con o sin rendición. */

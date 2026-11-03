@@ -34,14 +34,18 @@ import { PrismaService, type Tx } from '../prisma/prisma.service.js';
 import { aArchivo, ExportacionService } from '../exportacion/exportacion.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import {
+  aResumenEstadia,
   aResumenRetiro,
   etiquetaEstado,
+  includeEstadia,
   includeRetiro,
+  seccionEstadia,
   seccionRetiro,
 } from './retiro.mapper.js';
 
 class ValeDineroDtoIn implements ValeDineroInput {
-  @Id('Orden de retiro') ordenRetiroId!: number;
+  @Id('Orden de retiro', { opcional: true }) ordenRetiroId?: number | null;
+  @Id('Estadía', { opcional: true }) estadiaId?: number | null;
   @Fecha('Fecha de entrega') fechaEntrega!: string;
   @Texto('Concepto', { opcional: true, max: 80, mayusculas: true })
   concepto?: string;
@@ -55,12 +59,14 @@ class FiltroVales extends FiltroFechasDto {
   @Opcion('Estado', Object.values(EstadoDocumento), { opcional: true })
   estado?: EstadoDocumento;
   @Id('Orden de retiro', { opcional: true }) ordenRetiroId?: number;
+  @Id('Estadía', { opcional: true }) estadiaId?: number;
 }
 
 const include = {
   sitioEntrega: true,
   formaPago: true,
   ordenRetiro: { include: includeRetiro },
+  estadia: { include: includeEstadia },
 } satisfies Prisma.ValeDineroInclude;
 type Fila = Prisma.ValeDineroGetPayload<{ include: typeof include }>;
 
@@ -70,6 +76,7 @@ function aDto(v: Fila): ValeDineroDto {
     numero: v.numero,
     estado: v.estado,
     ordenRetiroId: v.ordenRetiroId,
+    estadiaId: v.estadiaId,
     fechaEntrega: aIso(v.fechaEntrega)!,
     concepto: v.concepto,
     glosa: v.glosa,
@@ -79,7 +86,8 @@ function aDto(v: Fila): ValeDineroDto {
     formaPagoId: v.formaPagoId,
     formaPago: v.formaPago.valor,
     motivoAnulacion: v.motivoAnulacion,
-    retiro: aResumenRetiro(v.ordenRetiro),
+    retiro: v.ordenRetiro ? aResumenRetiro(v.ordenRetiro) : null,
+    estadia: v.estadia ? aResumenEstadia(v.estadia) : null,
   };
 }
 
@@ -99,6 +107,7 @@ export class ValesDineroService {
         fechaEntrega: rangoFechas(f.desde, f.hasta),
         estado: f.estado,
         ordenRetiroId: f.ordenRetiroId,
+        estadiaId: f.estadiaId,
       },
       include,
       orderBy: { numero: 'desc' },
@@ -137,17 +146,34 @@ export class ValesDineroService {
     );
   }
 
+  /** El vale es anticipo de una orden de retiro activa o de una estadía emitida. */
+  private async validarDestino(tx: Tx, dto: ValeDineroDtoIn) {
+    if (!dto.ordenRetiroId === !dto.estadiaId)
+      throw invalido(
+        'Seleccione la orden de retiro o la estadía a la que corresponde el anticipo.',
+      );
+    if (dto.estadiaId) {
+      const e = await tx.rendicion.findUnique({ where: { id: dto.estadiaId } });
+      if (!e || e.tipo !== 'ESTADIA')
+        throw invalido('La estadía seleccionada no existe.');
+      if (e.estado !== 'EMITIDO')
+        throw conflicto(`La estadía N° ${e.numero} está anulada.`);
+      return;
+    }
+    const retiro = await tx.ordenRetiro.findUnique({
+      where: { id: dto.ordenRetiroId! },
+    });
+    if (!retiro) throw invalido('La orden de retiro seleccionada no existe.');
+    if (!ESTADOS_RETIRO_ACTIVOS.includes(retiro.estado)) {
+      throw conflicto(
+        `La orden de retiro N° ${retiro.numero} no está activa (${etiquetaEstado(retiro.estado).toLowerCase()}).`,
+      );
+    }
+  }
+
   async crear(dto: ValeDineroDtoIn, u: UsuarioSesion): Promise<ValeDineroDto> {
     return this.prisma.$transaction(async (tx) => {
-      const retiro = await tx.ordenRetiro.findUnique({
-        where: { id: dto.ordenRetiroId },
-      });
-      if (!retiro) throw invalido('La orden de retiro seleccionada no existe.');
-      if (!ESTADOS_RETIRO_ACTIVOS.includes(retiro.estado)) {
-        throw conflicto(
-          `La orden de retiro N° ${retiro.numero} no está activa (${etiquetaEstado(retiro.estado).toLowerCase()}).`,
-        );
-      }
+      await this.validarDestino(tx, dto);
       await this.validar(tx, dto);
       const concepto =
         dto.concepto ||
@@ -161,6 +187,8 @@ export class ValesDineroService {
       const v = await tx.valeDinero.create({
         data: {
           ...dto,
+          ordenRetiroId: dto.ordenRetiroId ?? null,
+          estadiaId: dto.estadiaId ?? null,
           concepto,
           numero,
           fechaEntrega: aFecha(dto.fechaEntrega)!,
@@ -190,15 +218,20 @@ export class ValesDineroService {
       if (!antes) throw noEncontrado('El vale de dinero');
       if (antes.estado === 'ANULADO')
         throw conflicto('El vale está anulado y no se puede modificar.');
-      if (dto.ordenRetiroId !== antes.ordenRetiroId)
+      if (
+        (dto.ordenRetiroId ?? null) !== antes.ordenRetiroId ||
+        (dto.estadiaId ?? null) !== antes.estadiaId
+      )
         throw invalido(
-          'No se puede cambiar la orden de retiro de un vale emitido.',
+          'No se puede cambiar la orden de retiro o la estadía de un vale emitido.',
         );
       await this.validar(tx, dto, antes);
       const v = await tx.valeDinero.update({
         where: { id },
         data: {
           ...dto,
+          ordenRetiroId: antes.ordenRetiroId,
+          estadiaId: antes.estadiaId,
           concepto: dto.concepto || antes.concepto,
           fechaEntrega: aFecha(dto.fechaEntrega)!,
           actualizadoPorId: u.id,
@@ -294,7 +327,7 @@ export class ValesDineroService {
               { etiqueta: 'Glosa', valor: v.glosa, ancho: 2 },
             ],
           },
-          seccionRetiro(v.retiro),
+          v.retiro ? seccionRetiro(v.retiro) : seccionEstadia(v.estadia!),
         ],
         tablas: [],
         firmas: ['Recibí conforme (conductor)', 'Entregado por'],

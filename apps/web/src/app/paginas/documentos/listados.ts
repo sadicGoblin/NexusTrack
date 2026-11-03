@@ -1,9 +1,11 @@
 import { Component } from '@angular/core';
-import type {
-  OrdenCargaDto,
-  RendicionDto,
-  ValeCombustibleDto,
-  ValeDineroDto,
+import {
+  TIPO_RENDICION_ETIQUETA,
+  type HojaRutaDto,
+  type OrdenCargaDto,
+  type RendicionDto,
+  type ValeCombustibleDto,
+  type ValeDineroDto,
 } from '@nexustrack/shared';
 import {
   ListadoDocumentos,
@@ -117,10 +119,11 @@ export class ListaValesDinero {
       numero: v.numero,
       fechaEntrega: v.fechaEntrega,
       estado: v.estado,
-      retiro: v.retiro.numero,
-      conductor: v.retiro.conductor,
-      cliente: v.retiro.cliente,
-      camion: v.retiro.camion,
+      retiro: v.retiro?.numero ?? null,
+      estadia: v.estadia?.numero ?? null,
+      conductor: v.retiro?.conductor ?? v.estadia?.conductor,
+      cliente: v.retiro?.cliente ?? null,
+      camion: v.retiro?.camion ?? v.estadia?.camion,
       concepto: v.concepto,
       sitioEntrega: v.sitioEntrega,
       formaPago: v.formaPago,
@@ -132,6 +135,7 @@ export class ListaValesDinero {
       { campo: 'fechaEntrega', titulo: 'Fecha entrega', tipo: 'fecha' },
       { campo: 'estado', titulo: 'Estado', tipo: 'estado' },
       { campo: 'retiro', titulo: 'Orden retiro', tipo: 'correlativo' },
+      { campo: 'estadia', titulo: 'Estadía', tipo: 'correlativo' },
       { campo: 'conductor', titulo: 'Conductor', filtro: 'lista' },
       { campo: 'cliente', titulo: 'Cliente', filtro: 'lista' },
       { campo: 'camion', titulo: 'Camión', filtro: 'lista', oculta: true },
@@ -209,7 +213,8 @@ export class ListaValesCombustible {
 export class ListaRendiciones {
   readonly config: ConfigListado = {
     titulo: 'Rendiciones',
-    descripcion: 'Rendición de gastos y viáticos de cada orden de carga.',
+    descripcion:
+      'Rendición de gastos y viáticos de cada orden de carga y de cada estadía (mismo correlativo).',
     recurso: 'rendiciones',
     claveEstado: 'rendiciones',
     estados: ['EMITIDO', 'ANULADO'],
@@ -221,12 +226,14 @@ export class ListaRendiciones {
       numero: r.numero,
       fecha: r.fecha,
       estado: r.estado,
+      tipo: TIPO_RENDICION_ETIQUETA[r.tipo],
+      hojaRuta: r.hojaRuta,
       ordenCarga: r.ordenCargaNumero,
-      retiro: r.retiro.numero,
-      conductor: r.retiro.conductor,
-      cliente: r.retiro.cliente,
+      retiro: r.retiro?.numero ?? null,
+      conductor: r.conductor,
+      cliente: r.retiro?.cliente ?? null,
       patenteCamion: r.patenteCamion,
-      tramo: r.tramo,
+      tramo: r.tramo ?? `${r.origen} - ${r.destino}`,
       kmRecorridos: r.kmRecorridos,
       motorRemolque:
         r.remolqueConMotor === null ? '' : r.remolqueConMotor ? 'Con motor' : 'Sin motor',
@@ -241,6 +248,8 @@ export class ListaRendiciones {
       { campo: 'numero', titulo: 'N°', tipo: 'correlativo', ancho: '6rem' },
       { campo: 'fecha', titulo: 'Fecha', tipo: 'fecha' },
       { campo: 'estado', titulo: 'Estado', tipo: 'estado' },
+      { campo: 'tipo', titulo: 'Tipo', filtro: 'lista' },
+      { campo: 'hojaRuta', titulo: 'Hoja de ruta', tipo: 'correlativo', oculta: true },
       { campo: 'ordenCarga', titulo: 'Orden carga', tipo: 'correlativo' },
       { campo: 'retiro', titulo: 'Orden retiro', tipo: 'correlativo', oculta: true },
       { campo: 'conductor', titulo: 'Conductor', filtro: 'lista' },
@@ -255,6 +264,99 @@ export class ListaRendiciones {
       { campo: 'totalViaticos', titulo: 'Viáticos', tipo: 'pesos' },
       { campo: 'totalOtrosGastos', titulo: 'Otros gastos', tipo: 'pesos' },
       { campo: 'totalGeneral', titulo: 'Total', tipo: 'pesos' },
+    ],
+  };
+}
+
+@Component({
+  selector: 'nt-lista-estadias',
+  imports: [ListadoDocumentos],
+  template: `<nt-listado-documentos [config]="config" />`,
+})
+export class ListaEstadias {
+  readonly config: ConfigListado = {
+    titulo: 'Estadías',
+    descripcion:
+      'Gastos del conductor mientras espera en un lugar, sin orden de carga. Son rendiciones (mismo correlativo) y llevan N° de hoja de ruta por su fecha de inicio.',
+    recurso: 'rendiciones',
+    parametros: { tipo: 'ESTADIA' },
+    claveEstado: 'estadias',
+    estados: ['EMITIDO', 'ANULADO'],
+    todos: 'Todas',
+    etiquetaNuevo: 'Nueva estadía',
+    permisoNuevo: 'editarFinanzas',
+    aplanar: (r: RendicionDto) => ({
+      id: r.id,
+      numero: r.numero,
+      hojaRuta: r.hojaRuta,
+      fecha: r.fecha,
+      fechaSalida: r.fechaSalida,
+      fechaLlegada: r.fechaLlegada,
+      estado: r.estado,
+      conductor: r.conductor,
+      destino: r.destino,
+      patenteCamion: r.patenteCamion,
+      patenteRemolque: r.patenteRemolque,
+      totalViaticos: r.totalViaticos,
+      totalOtrosGastos: r.totalOtrosGastos,
+      totalGeneral: r.totalGeneral,
+    }),
+    columnas: [
+      { campo: 'numero', titulo: 'N°', tipo: 'correlativo', ancho: '6rem' },
+      { campo: 'hojaRuta', titulo: 'Hoja de ruta', tipo: 'correlativo' },
+      { campo: 'fecha', titulo: 'Fecha rendición', tipo: 'fecha' },
+      { campo: 'fechaSalida', titulo: 'Inicio', tipo: 'fecha' },
+      { campo: 'fechaLlegada', titulo: 'Término', tipo: 'fecha' },
+      { campo: 'estado', titulo: 'Estado', tipo: 'estado' },
+      { campo: 'conductor', titulo: 'Conductor', filtro: 'lista' },
+      { campo: 'destino', titulo: 'Lugar', filtro: 'lista' },
+      { campo: 'patenteCamion', titulo: 'Camión', filtro: 'lista' },
+      { campo: 'patenteRemolque', titulo: 'Remolque', filtro: 'lista', oculta: true },
+      { campo: 'totalViaticos', titulo: 'Viáticos', tipo: 'pesos' },
+      { campo: 'totalOtrosGastos', titulo: 'Otros gastos', tipo: 'pesos' },
+      { campo: 'totalGeneral', titulo: 'Total', tipo: 'pesos' },
+    ],
+  };
+}
+
+@Component({
+  selector: 'nt-lista-hojas-ruta',
+  imports: [ListadoDocumentos],
+  template: `<nt-listado-documentos [config]="config" />`,
+})
+export class ListaHojasRuta {
+  readonly config: ConfigListado = {
+    titulo: 'Hojas de ruta',
+    descripcion:
+      'Una por flete con guías y una por estadía, numeradas por fecha de carga (o de inicio de la estadía). Si se ingresa una con fecha anterior, las siguientes se corren.',
+    recurso: 'hojas-ruta',
+    claveEstado: 'hojas-ruta',
+    estados: ['ABIERTA', 'RENDIDA'],
+    todos: 'Todas',
+    aplanar: (h: HojaRutaDto) => ({
+      ...h,
+      tipo: TIPO_RENDICION_ETIQUETA[h.tipo],
+    }),
+    columnas: [
+      { campo: 'numero', titulo: 'N° hoja', tipo: 'correlativo', ancho: '6rem' },
+      { campo: 'fecha', titulo: 'Fecha', tipo: 'fecha' },
+      { campo: 'estado', titulo: 'Estado', tipo: 'estado' },
+      { campo: 'tipo', titulo: 'Tipo', filtro: 'lista' },
+      { campo: 'origen', titulo: 'Origen', filtro: 'lista' },
+      { campo: 'destino', titulo: 'Destino', filtro: 'lista' },
+      { campo: 'conductor', titulo: 'Chofer', filtro: 'lista', ancho: '12rem' },
+      { campo: 'patenteCamion', titulo: 'Patente', filtro: 'lista' },
+      { campo: 'patenteRemolque', titulo: 'Remolque', filtro: 'lista', oculta: true },
+      { campo: 'cliente', titulo: 'Cliente', filtro: 'lista', oculta: true },
+      { campo: 'tramo', titulo: 'Tramo', filtro: 'lista', oculta: true },
+      { campo: 'ordenCargaNumero', titulo: 'Orden carga', tipo: 'correlativo', oculta: true },
+      { campo: 'rendicionNumero', titulo: 'Rendición', tipo: 'correlativo', oculta: true },
+      { campo: 'totalGastos', titulo: 'Gastos total', tipo: 'pesos' },
+      { campo: 'peajes', titulo: 'Peajes', tipo: 'pesos' },
+      { campo: 'cargaDescarga', titulo: 'Carga y descarga', tipo: 'pesos' },
+      { campo: 'viaticos', titulo: 'Viáticos', tipo: 'pesos' },
+      { campo: 'varios', titulo: 'Varios', tipo: 'pesos' },
+      { campo: 'petroleo', titulo: 'Petróleo', tipo: 'pesos' },
     ],
   };
 }

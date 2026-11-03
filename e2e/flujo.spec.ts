@@ -131,6 +131,41 @@ test('los informes muestran el flete del mes y la rendición abre su recorrido G
   await expect(page.getByText('El GPS no está configurado')).toBeVisible();
 });
 
+test('una estadía se rinde sin orden de carga, recibe su anticipo y tiene hoja de ruta', async ({ page }) => {
+  await ingresar(page);
+  await page.goto('/operacion/estadias/nuevo');
+  // El camión y el remolque salen de la asignación vigente del conductor.
+  await elegir(page, 'c-conductorId', 'FERNANDO');
+  await expect(page.locator('#c-camionId')).toContainText('DRXR59');
+  await elegir(page, 'c-destinoId', 'SAN ANTONIO');
+  await page.getByRole('button', { name: 'Agregar día' }).click();
+  await escribirNumero(page.getByLabel('Almuerzo'), '8000');
+  await page.getByRole('button', { name: 'Emitir' }).click();
+  await expect(page.getByRole('heading', { name: /Rendición de estadía\s+N° 000002/ })).toBeVisible();
+  const hoja = page.getByRole('link', { name: /Hoja de ruta N°/ });
+  await expect(hoja).toBeVisible();
+
+  // Anticipo de la estadía: vale de dinero que la apunta.
+  await page.getByRole('button', { name: 'Entregar anticipo' }).click();
+  await expect(page.getByRole('heading', { name: /Estadía N° 000002/ })).toBeVisible();
+  await elegir(page, 'c-sitioEntregaId', 'CURICO');
+  await elegir(page, 'c-formaPagoId', 'EFECTIVO');
+  await escribirNumero(page.locator('#c-monto'), '20000');
+  await page.getByRole('button', { name: 'Emitir' }).click();
+  await expect(page.getByRole('heading', { name: /Vale de dinero\s+N° 000002/ })).toBeVisible();
+  await expect(page.locator('nt-cuenta-conductor')).toContainText('Anticipos de esta estadía');
+
+  // Hojas de ruta: el flete y la estadía, con su origen «ESTADÍA».
+  await page.goto('/operacion/hojas-ruta');
+  await expect(page.getByText('Todas (2)')).toBeVisible();
+  await page.getByRole('row', { name: /ESTADÍA.*SAN ANTONIO/ }).click();
+  await expect(page.getByRole('heading', { name: /Hoja de ruta\s+N°/ })).toBeVisible();
+  await expect(page.getByText('Rendición de estadía').or(page.getByText('Estadía N° 000002'))).toBeVisible();
+  const descarga = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'PDF' }).click();
+  expect((await descarga).suggestedFilename()).toMatch(/^hoja-ruta-\d{6}\.pdf$/);
+});
+
 test('los botones de estado filtran el listado con un clic y se recuerdan', async ({ page }) => {
   await ingresar(page);
   await page.goto('/operacion/ordenes-retiro');

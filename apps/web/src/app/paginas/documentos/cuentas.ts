@@ -3,8 +3,10 @@ import { Router, RouterLink } from '@angular/router';
 import {
   formatearRut,
   sentidoSaldo,
+  TIPO_RENDICION_ETIQUETA,
   type CuentaConductorDto,
   type DetalleCuentaDto,
+  type FleteCuentaDto,
 } from '@nexustrack/shared';
 import { ApiService } from '../../nucleo/api.service';
 import { FechaPipe, PesosPipe } from '../../nucleo/pipes';
@@ -237,14 +239,16 @@ export class CuentaDeConductor {
     (this.cuenta()?.fletes ?? []).map((f) => ({
       ...f,
       ruta: `${f.origen} → ${f.destino}`,
+      tipo: TIPO_RENDICION_ETIQUETA[f.tipo],
       numerosVales: f.vales.map((v) => String(v.numero).padStart(6, '0')).join(', '),
       estado: f.rendido === null ? 'Por rendir' : 'Rendido',
     })),
   );
 
   readonly columnas: ColumnaTabla[] = [
+    { campo: 'tipo', titulo: 'Tipo', filtro: 'lista' },
     { campo: 'ordenRetiroNumero', titulo: 'Orden de retiro', tipo: 'correlativo' },
-    { campo: 'fechaRetiro', titulo: 'Fecha', tipo: 'fecha' },
+    { campo: 'fecha', titulo: 'Fecha', tipo: 'fecha' },
     { campo: 'cliente', titulo: 'Cliente', filtro: 'lista' },
     { campo: 'ruta', titulo: 'Ruta', ancho: '14rem' },
     { campo: 'numerosVales', titulo: 'Vales N°' },
@@ -275,8 +279,13 @@ export class CuentaDeConductor {
 
   readonly plural = plural;
 
-  abrir(fila: { ordenRetiroId: number }): void {
-    void this.router.navigate(['/operacion/ordenes-retiro', fila.ordenRetiroId]);
+  /** Un flete abre su orden de retiro; una estadía, su rendición. */
+  abrir(fila: FleteCuentaDto): void {
+    void this.router.navigate(
+      fila.ordenRetiroId
+        ? ['/operacion/ordenes-retiro', fila.ordenRetiroId]
+        : ['/operacion/estadias', fila.rendicionId],
+    );
   }
 }
 

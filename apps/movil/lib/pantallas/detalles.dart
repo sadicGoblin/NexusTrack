@@ -303,7 +303,7 @@ class DetalleValeDinero extends StatelessWidget {
         tipo: 'Vale de dinero',
         numero: v.numero,
         estado: v.estado,
-        subtitulo: '${v.retiro.conductor} · ${pesos(v.monto)}',
+        subtitulo: '${v.conductor} · ${pesos(v.monto)}',
       ),
       if (v.estado == 'ANULADO') AvisoAnulado(v.motivoAnulacion),
       _seccion('Vale', [
@@ -314,7 +314,17 @@ class DetalleValeDinero extends StatelessWidget {
         Dato('Forma de pago', v.formaPago),
         Dato('Monto', pesos(v.monto), destacado: true),
       ]),
-      _seccionRetiro(context, v.retiro),
+      if (v.retiro != null) _seccionRetiro(context, v.retiro!),
+      if (v.estadia != null)
+        _seccion('Estadía', [
+          Dato(
+            'Estadía',
+            'N° ${correlativo(v.estadia!.numero)}',
+            alTocar: () => context.push('/rendiciones/${v.estadia!.id}'),
+          ),
+          Dato('Lugar', v.estadia!.destino),
+          Dato('Conductor', v.estadia!.conductor),
+        ]),
     ],
   );
 }
@@ -364,18 +374,24 @@ class DetalleRendicion extends StatelessWidget {
     proveedor: rendicionProvider(id),
     contenido: (context, r) => [
       _Cabecera(
-        tipo: 'Rendición de fletes',
+        tipo: r.esEstadia ? 'Rendición de estadía' : 'Rendición de fletes',
         numero: r.numero,
         estado: r.estado,
-        subtitulo: '${r.retiro.cliente} · ${pesos(r.totalGeneral)}',
+        subtitulo: '${r.retiro?.cliente ?? r.conductor} · ${pesos(r.totalGeneral)}',
       ),
       if (r.estado == 'ANULADO') AvisoAnulado(r.motivoAnulacion),
-      _seccion('Viaje', [
-        Dato(
-          'Orden de carga',
-          'N° ${correlativo(r.ordenCargaNumero)}',
-          alTocar: () => context.push('/cargas/${r.ordenCargaId}'),
-        ),
+      _seccion(r.esEstadia ? 'Estadía' : 'Viaje', [
+        if (r.ordenCargaId != null)
+          Dato(
+            'Orden de carga',
+            'N° ${correlativo(r.ordenCargaNumero)}',
+            alTocar: () => context.push('/cargas/${r.ordenCargaId}'),
+          ),
+        if (r.esEstadia) ...[
+          Dato('Conductor', r.conductor),
+          Dato('Ruta', '${r.origen} → ${r.destino}'),
+          Dato('Camión / remolque', _vehiculo(r.patenteCamion, r.patenteRemolque)),
+        ],
         Dato('Fecha de rendición', fecha(r.fecha)),
         Dato('Tramo', r.tramo),
         Dato('Salida', fechaHora(r.fechaSalida, r.horaSalida)),
@@ -423,7 +439,7 @@ class DetalleRendicion extends StatelessWidget {
           ],
         ),
       _observaciones(r.observaciones),
-      _seccionRetiro(context, r.retiro),
+      if (r.retiro != null) _seccionRetiro(context, r.retiro!),
     ],
   );
 }

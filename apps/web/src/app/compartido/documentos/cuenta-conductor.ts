@@ -33,7 +33,7 @@ import { CorrelativoPipe, PesosPipe } from '../../nucleo/pipes';
             </div>
             <div class="linea">
               <span
-                >Anticipos de este flete
+                >Anticipos de {{ clave().startsWith('E') ? 'esta estadía' : 'este flete' }}
                 @if (vales().length) {
                   <small class="nt-tenue">(vale {{ numerosVales() }})</small>
                 }
@@ -63,7 +63,7 @@ import { CorrelativoPipe, PesosPipe } from '../../nucleo/pipes';
             </div>
             <div class="linea">
               <span
-                >Anticipos de esta orden
+                >Anticipos de {{ clave().startsWith('E') ? 'esta estadía' : 'esta orden' }}
                 @if (vales().length) {
                   <small class="nt-tenue">(vale {{ numerosVales() }})</small>
                 }
@@ -77,7 +77,7 @@ import { CorrelativoPipe, PesosPipe } from '../../nucleo/pipes';
                 @if (otrosPorRendir().length) {
                   <small class="nt-tenue"
                     >(orden
-                    @for (f of otrosPorRendir(); track f.ordenRetiroId; let ultimo = $last) {
+                    @for (f of otrosPorRendir(); track f.clave; let ultimo = $last) {
                       <a [routerLink]="['/operacion/ordenes-retiro', f.ordenRetiroId]"
                         >N° {{ f.ordenRetiroNumero | correlativo }}</a
                       >{{ ultimo ? '' : ', ' }}
@@ -172,7 +172,8 @@ export class CuentaConductor {
   private readonly api = inject(ApiService);
 
   readonly conductorId = input.required<number>();
-  readonly ordenRetiroId = input.required<number>();
+  /** Flete u estadía del documento: «R<id de la orden de retiro>» o «E<id de la estadía>». */
+  readonly clave = input.required<string>();
   readonly modo = input<'rendicion' | 'anticipo'>('rendicion');
   /** Total de la rendición en pantalla (cambia mientras se edita). */
   readonly totalRendicion = input(0);
@@ -182,7 +183,7 @@ export class CuentaConductor {
   readonly cuenta = signal<DetalleCuentaDto | null>(null);
 
   private readonly flete = computed(() =>
-    this.cuenta()?.fletes.find((f) => f.ordenRetiroId === this.ordenRetiroId()),
+    this.cuenta()?.fletes.find((f) => f.clave === this.clave()),
   );
   readonly vales = computed(() => this.flete()?.vales ?? []);
   readonly numerosVales = computed(() =>
@@ -191,13 +192,11 @@ export class CuentaConductor {
       .join(', '),
   );
   readonly anticipos = computed(() => this.flete()?.anticipos ?? 0);
-  readonly anterior = computed(() =>
-    saldoAntesDe(this.cuenta()?.fletes ?? [], this.ordenRetiroId()),
-  );
+  readonly anterior = computed(() => saldoAntesDe(this.cuenta()?.fletes ?? [], this.clave()));
   readonly nuevo = computed(() => this.anterior() + this.anticipos() - this.totalRendicion());
   readonly otrosPorRendir = computed(() =>
     (this.cuenta()?.fletes ?? []).filter(
-      (f) => f.rendido === null && f.anticipos > 0 && f.ordenRetiroId !== this.ordenRetiroId(),
+      (f) => f.rendido === null && f.anticipos > 0 && f.clave !== this.clave(),
     ),
   );
   readonly totalOtrosPorRendir = computed(() =>

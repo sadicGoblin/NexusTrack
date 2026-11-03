@@ -70,8 +70,8 @@
       <div class="nt-tarjeta-titulo">
         <h2>Carga</h2>
         @if (dto()?.hojaRuta) {
-          <small
-            >Hoja de ruta <strong>N° {{ dto()!.hojaRuta | correlativo }}</strong></small
+          <a class="hoja" [routerLink]="['/operacion/hojas-ruta', 'C' + dto()!.id]"
+            >Hoja de ruta <strong>N° {{ dto()!.hojaRuta | correlativo }}</strong></a
           >
         } @else {
           <small>La hoja de ruta se asigna al registrar las guías.</small>
@@ -274,6 +274,11 @@
 }
 
 <style>
+  .hoja {
+    font-size: 0.85rem;
+    text-decoration: none;
+    color: var(--p-text-muted-color);
+  }
   .aviso-tramo {
     display: block;
     margin-top: 0.75rem;

@@ -75,9 +75,9 @@ Aplican los supuestos de la sección 2 del plan. Los que cambian el comportamien
 - **Estados.** Orden de retiro: Abierta → Con carga → Cerrada (al rendir); Anulada.
   Orden de carga: Abierta → Rendida; Anulada. Vales y rendiciones: Emitido; Anulado.
   Anular exige anular antes los documentos hijos, y devuelve al padre a su estado anterior.
-- **Hoja de ruta.** Se asigna automáticamente la primera vez que una orden de carga se guarda
-  con al menos una guía (no hay un paso de "confirmar"). Los listados se ordenan por fecha
-  de carga. Una rendición exige que la orden de carga tenga guías.
+- **Hoja de ruta.** La tiene toda orden de carga con al menos una guía (no hay un paso de
+  "confirmar"); su N° es correlativo por fecha (ver §16). Una rendición exige que la orden de
+  carga tenga guías.
 - **Herencia con copia.** La orden de carga copia las patentes y cada guía copia el texto del
   tramo y el valor unitario; cambios posteriores en mantenedores no alteran documentos emitidos.
 - **Tarifas.** Se ofrecen las vigentes a la fecha de carga; las vencidas se pueden mostrar
@@ -195,3 +195,31 @@ ya tiene un Caddy de otro proyecto en los puertos 80 y 443. Por eso:
   Gaete»), porque en fm-track la patente oficial suele venir vacía.
 - La rendición lo abre en un diálogo con los datos del formulario, aunque no estén guardados:
   así se revisa mientras se ingresa. Leaflet se carga recién al abrir el diálogo.
+
+## 16. Hoja de ruta por fecha y estadías
+
+- **N° de hoja de ruta = posición por fecha.** El cliente lo pidió correlativo por fecha de carga,
+  también con lo que se ingresa tarde (confirmado el 03-11-2026: «siempre por fecha»). Entran las
+  órdenes de carga no anuladas con guías (fecha y hora de carga) y las estadías emitidas (fecha y
+  hora de inicio); en un mismo momento, por orden de ingreso. Ingresar uno con fecha anterior
+  corre los siguientes; anular o eliminar los saca y cierra el hueco. Un N° ya impreso puede
+  cambiar: es el costo de la regla.
+- Se recalcula en la base (`renumerar_hojas_ruta()`, migración `20261103120000`) dentro de la
+  misma transacción que guarda, anula o elimina. Esa transacción toma primero un bloqueo
+  (`pg_advisory_xact_lock`) para que dos guardados a la vez no se crucen ni se bloqueen
+  mutuamente. Por eso `OrdenCarga.hojaRuta` dejó de ser único. Los cambios de N° no se
+  registran en la auditoría: no son ediciones del documento.
+- La numeración parte de `HOJA_RUTA_INICIAL` (Parámetros), para continuar la planilla; al
+  cambiarlo se renumera todo. Al migrar, las hojas existentes se renumeraron por fecha.
+- **Estadía = rendición sin orden de carga** (`Rendicion.tipo = ESTADIA`), con el mismo
+  correlativo, como pidió el cliente. Lleva conductor, camión, remolque y lugar (destino) propios;
+  el origen es siempre «ESTADÍA» (en la planilla quedaba vacío). La fecha de salida es su inicio
+  y es obligatoria. Restricciones CHECK en la base: un flete tiene orden de carga; una estadía,
+  conductor, camión, lugar e inicio.
+- **Anticipo de una estadía = vale de dinero** que apunta a ella (`ValeDinero.estadiaId`; CHECK:
+  orden de retiro o estadía, nunca ambas). Entra a la cuenta del conductor como un flete más
+  (clave «E<id>»; los fletes son «R<id de la orden de retiro>»). Anular o eliminar la estadía
+  exige antes anular o eliminar sus vales, como entre los demás documentos.
+- En el Control de fletes las estadías son filas sin cliente ni valor de flete (sus costos restan
+  margen al período); al filtrar por cliente no aparecen. En Órdenes por facturar no entran.
+- La app móvil lee estadías y vales de estadía (orden de retiro y orden de carga opcionales).
