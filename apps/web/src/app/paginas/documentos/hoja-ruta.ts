@@ -38,7 +38,17 @@ import { ResumenRetiro } from '../../compartido/documentos/resumen-retiro';
       [estado]="h()?.estado ?? null"
       [recurso]="'hojas-ruta/' + h()?.id"
       volver="/operacion/hojas-ruta"
-    />
+    >
+      @if (salidaGps()) {
+        <p-button
+          label="Trazabilidad"
+          icon="pi pi-map-marker"
+          severity="secondary"
+          [outlined]="true"
+          (onClick)="mostrarRecorrido.set(true)"
+        />
+      }
+    </nt-barra-documento>
     @if (!h()) {
       <nt-cargando class="bloque" />
     }
@@ -139,15 +149,6 @@ import { ResumenRetiro } from '../../compartido/documentos/resumen-retiro';
         <section class="nt-tarjeta">
           <div class="nt-tarjeta-titulo">
             <h2>{{ h.tipo === 'ESTADIA' ? 'Estadía' : 'Viaje' }}</h2>
-            @if (salidaGps()) {
-              <p-button
-                label="Recorrido GPS"
-                icon="pi pi-map"
-                size="small"
-                [outlined]="true"
-                (onClick)="mostrarRecorrido.set(true)"
-              />
-            }
           </div>
           @if (salidaGps(); as salida) {
             <nt-recorrido-gps

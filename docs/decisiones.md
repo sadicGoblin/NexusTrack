@@ -194,7 +194,11 @@ ya tiene un Caddy de otro proyecto en los puertos 80 y 443. Por eso:
 - El camión se busca por patente dentro del nombre del vehículo en fm-track («CDSP97, Luis
   Gaete»), porque en fm-track la patente oficial suele venir vacía.
 - La rendición lo abre en un diálogo con los datos del formulario, aunque no estén guardados:
-  así se revisa mientras se ingresa. Leaflet se carga recién al abrir el diálogo.
+  así se revisa mientras se ingresa. Leaflet se carga recién al abrir el diálogo. El cliente lo
+  llama **Trazabilidad**: el botón va en la barra del documento y hay una página del mismo nombre
+  para cualquier unidad del grupo (`GET /recorridos?vehiculoId=`, hasta 31 días); ambas usan el
+  componente `MapaRecorrido`, que encuadra sin animación (Leaflet queda a medias si cambia de
+  tamaño mientras anima un zoom).
 
 ## 16. Hoja de ruta por fecha y estadías
 

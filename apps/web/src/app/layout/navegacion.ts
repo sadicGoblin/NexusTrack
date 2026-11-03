@@ -10,10 +10,18 @@ export interface ItemMenu {
 export interface GrupoMenu {
   titulo: string;
   items: ItemMenu[];
+  /** Grupo plegado mientras el usuario no lo abra (se recuerda en el navegador). */
+  plegado?: boolean;
 }
 
 export const MENU: GrupoMenu[] = [
-  { titulo: '', items: [{ etiqueta: 'Inicio', icono: 'pi pi-home', ruta: '/inicio' }] },
+  {
+    titulo: '',
+    items: [
+      { etiqueta: 'Inicio', icono: 'pi pi-home', ruta: '/inicio' },
+      { etiqueta: 'Trazabilidad', icono: 'pi pi-map-marker', ruta: '/trazabilidad' },
+    ],
+  },
   {
     titulo: 'Operación',
     items: [
@@ -56,6 +64,7 @@ export const MENU: GrupoMenu[] = [
   },
   {
     titulo: 'Mantenedores',
+    plegado: true,
     items: [
       { etiqueta: 'Asignaciones', icono: 'pi pi-link', ruta: '/mantenedores/asignaciones' },
       { etiqueta: 'Móviles', icono: 'pi pi-truck', ruta: '/mantenedores/moviles' },
@@ -68,6 +77,7 @@ export const MENU: GrupoMenu[] = [
   },
   {
     titulo: 'Administración',
+    plegado: true,
     items: [
       {
         etiqueta: 'Catálogos',

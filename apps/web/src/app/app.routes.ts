@@ -25,6 +25,12 @@ export const routes: Routes = [
           import('./paginas/documentos/documentos.routes').then((m) => m.rutasDocumentos),
       },
       {
+        path: 'trazabilidad',
+        title: 'Trazabilidad · NexusTrack',
+        loadComponent: () =>
+          import('./paginas/trazabilidad/trazabilidad').then((m) => m.Trazabilidad),
+      },
+      {
         path: 'informes',
         loadChildren: () =>
           import('./paginas/informes/informes.routes').then((m) => m.rutasInformes),

@@ -120,15 +120,22 @@ test('los informes muestran el flete del mes y la rendición abre su recorrido G
   await page.getByRole('button', { name: 'PDF' }).click();
   expect((await informe).suggestedFilename()).toMatch(/^por-facturar-coexca-s-a-.*\.pdf$/);
 
-  // Recorrido GPS sin salir de la rendición: en pruebas no hay clave de fm-track y lo avisa.
+  // Trazabilidad sin salir de la rendición: en pruebas no hay clave de fm-track y lo avisa.
   await page.goto('/operacion/rendiciones');
   await page
     .getByRole('row', { name: /000001/ })
     .first()
     .click();
-  await page.getByRole('button', { name: 'Recorrido GPS' }).click();
+  await page.getByRole('button', { name: 'Trazabilidad' }).click();
   await expect(page.locator('.leaflet-container')).toBeVisible();
   await expect(page.getByText('El GPS no está configurado')).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  // Trazabilidad de cualquier unidad, desde el menú.
+  await page.getByRole('link', { name: 'Trazabilidad' }).click();
+  await expect(page.getByRole('heading', { name: 'Trazabilidad' })).toBeVisible();
+  await expect(page.getByText('El GPS no está configurado')).toBeVisible();
+  await expect(page.getByText('Elija una unidad para ver su recorrido.')).toBeVisible();
 });
 
 test('una estadía se rinde sin orden de carga, recibe su anticipo y tiene hoja de ruta', async ({ page }) => {

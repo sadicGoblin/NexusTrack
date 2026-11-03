@@ -33,6 +33,23 @@ test('el botón de menú deja solo íconos con tooltip y el contenido usa todo e
   await expect.poll(() => ancho(lateral)).toBe(anchoMenu);
 });
 
+test('los grupos del menú se pliegan, se recuerdan y se abren solos en su pantalla', async ({ page }) => {
+  await ingresar(page);
+  const menu = page.locator('aside.lateral');
+  // Administración parte plegada: sus opciones no ocupan espacio.
+  await expect(menu.getByRole('link', { name: 'Usuarios' })).toHaveCount(0);
+  await menu.getByRole('button', { name: 'Administración' }).click();
+  await expect(menu.getByRole('link', { name: 'Usuarios' })).toBeVisible();
+  await menu.getByRole('button', { name: 'Operación' }).click();
+  await expect(menu.getByRole('link', { name: 'Órdenes de retiro' })).toHaveCount(0);
+  await page.reload();
+  await expect(menu.getByRole('link', { name: 'Usuarios' })).toBeVisible();
+  await expect(menu.getByRole('link', { name: 'Órdenes de retiro' })).toHaveCount(0);
+  // El grupo de la pantalla actual se ve aunque esté plegado.
+  await page.goto('/operacion/ordenes-retiro');
+  await expect(menu.getByRole('link', { name: 'Órdenes de retiro' })).toBeVisible();
+});
+
 test('el RUT se formatea al escribir y las fechas tienen calendario y botón Hoy', async ({ page }) => {
   await ingresar(page);
   await page.goto('/mantenedores/conductores');

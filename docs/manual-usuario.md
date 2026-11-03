@@ -29,6 +29,14 @@ Haga clic en una fila para abrir el registro.
 - **Horas**: formato de 24 horas. Escriba los números (1430 queda 14:30; 930 queda 09:30) o haga clic en el campo o en el reloj y elija la hora (00 a 23) y los minutos (00 a 59). **Ahora** pone la hora actual.
 - **RUT**: escriba los números y el dígito verificador; los puntos y el guion se agregan solos.
 
+## Menú
+
+Los grupos del menú (Operación, Informes, Mantenedores, Administración) se abren y cierran con un clic en su título; cada navegador recuerda cómo los dejó. Mantenedores y Administración parten cerrados, y el grupo de la pantalla en que está se muestra siempre. Con el menú contraído (solo íconos) se ven todos.
+
+## Trazabilidad
+
+**Trazabilidad** (bajo Inicio) muestra el historial GPS de cualquier unidad del grupo de camiones: elija la unidad y el período (**Hoy**, **Ayer**, **24 h**, **48 h**, **7 días**, **30 días** o **Entre fechas**, hasta 31 días por vez). Se ven la ruta en el mapa, la distancia, el tiempo en movimiento y detenido, la velocidad y la lista de viajes y paradas; haga clic en una para verla en el mapa. El botón de actualizar trae lo último. La aplicación guarda las posiciones cada minuto y conserva al menos 40 días.
+
 ## Mantenedores
 
 Empresas, clientes, packings, móviles, conductores y rutas y tarifas se manejan igual: botón **Nuevo** arriba a la derecha y clic en una fila para editar. Los registros no se borran: se desactivan con el interruptor **Activo**.
@@ -86,7 +94,7 @@ Complete salida, llegada y odómetros (los kilómetros se calculan solos), peaje
 
 Al final está la **cuenta del conductor**, que se recalcula mientras escribe: saldo anterior + anticipos de este flete − gastos de esta rendición = saldo de la cuenta.
 
-**Recorrido GPS**: en la sección Viaje, el botón **Recorrido GPS** abre, sin salir de la rendición, el mapa con la ruta del camión entre la salida y la llegada anotadas (aunque todavía no se haya guardado). A la derecha se ven la distancia según el GPS junto a los kilómetros rendidos, el tiempo en movimiento y detenido, y la lista de viajes y paradas: haga clic en una para verla en el mapa. Con **± 1 h** o **± 3 h** se amplía el período, para revisar si las horas anotadas calzan con el GPS. Las paradas naranjas son con motor encendido y las grises con motor apagado. Si no hay llegada anotada, se muestran 2 días desde la salida.
+**Trazabilidad**: el botón **Trazabilidad**, arriba junto a PDF y Excel, abre sin salir de la rendición el mapa con la ruta del camión entre la salida y la llegada anotadas (aunque todavía no se haya guardado). A la derecha se ven la distancia según el GPS junto a los kilómetros rendidos, el tiempo en movimiento y detenido, y la lista de viajes y paradas: haga clic en una para verla en el mapa. Con **± 1 h** o **± 3 h** se amplía el período, para revisar si las horas anotadas calzan con el GPS. Las paradas naranjas son con motor encendido y las grises con motor apagado. Si no hay llegada anotada, se muestran 2 días desde la salida.
 
 ## Estadías
 
@@ -104,7 +112,7 @@ Al final está la **cuenta del conductor**, que se recalcula mientras escribe: s
 
 - El **N° de hoja de ruta** es correlativo por **fecha de carga** (en una estadía, su fecha de inicio); en un mismo día, por hora y luego por orden de ingreso. Si se ingresa un flete o una estadía con fecha anterior, las hojas siguientes se corren en uno. Las anuladas salen de la numeración.
 - La numeración parte del valor de **Parámetros → HOJA_RUTA_INICIAL**, para continuar la de la planilla.
-- Haga clic en una hoja para ver su detalle: datos del viaje, enlaces a sus documentos, guías, orden de retiro, viaje y gastos rendidos, con **Recorrido GPS**, **PDF** y **Excel**. Si el flete aún no se rinde, ofrece **Crear rendición**.
+- Haga clic en una hoja para ver su detalle: datos del viaje, enlaces a sus documentos, guías, orden de retiro, viaje y gastos rendidos, con **Trazabilidad**, **PDF** y **Excel**. Si el flete aún no se rinde, ofrece **Crear rendición**.
 
 ## Cuentas de conductores
 

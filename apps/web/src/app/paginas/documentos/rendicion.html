@@ -23,7 +23,25 @@
     [guardando]="guardando()"
     (guardar)="guardar()"
     (anular)="anular($event)"
-  />
+  >
+    @if (form()) {
+      <p-button
+        label="Trazabilidad"
+        icon="pi pi-map-marker"
+        severity="secondary"
+        [outlined]="true"
+        [disabled]="!salidaGps()"
+        (onClick)="mostrarRecorrido.set(true)"
+        [pTooltip]="
+          salidaGps()
+            ? 'Ruta, viajes y paradas del camión entre la salida y la llegada'
+            : 'Indique la fecha de salida para ver la trazabilidad'
+        "
+        tooltipPosition="bottom"
+        [showDelay]="400"
+      />
+    }
+  </nt-barra-documento>
   @if (!form()) {
     <nt-cargando class="bloque" />
   }
@@ -132,16 +150,6 @@
     <section class="nt-tarjeta">
       <div class="nt-tarjeta-titulo">
         <h2>{{ esEstadia() ? 'Período de la estadía' : 'Viaje' }}</h2>
-        <p-button
-          label="Recorrido GPS"
-          icon="pi pi-map"
-          size="small"
-          [outlined]="true"
-          [disabled]="!salidaGps()"
-          (onClick)="mostrarRecorrido.set(true)"
-          pTooltip="Ruta, viajes y paradas del camión entre la salida y la llegada"
-          tooltipPosition="left"
-        />
       </div>
       <nt-campos [form]="f" [campos]="camposViaje()" [columnas]="5" [soloLectura]="!editable()" />
     </section>

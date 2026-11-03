@@ -9,11 +9,28 @@
   <nav aria-label="Menú principal">
     @for (grupo of menu(); track grupo.titulo) {
       @if (grupo.titulo) {
-        <div class="grupo">
-          <span>{{ grupo.titulo }}</span>
-        </div>
+        @if (compacto) {
+          <div class="grupo">
+            <span>{{ grupo.titulo }}</span>
+          </div>
+        } @else {
+          <button
+            type="button"
+            class="grupo plegable"
+            [attr.aria-expanded]="grupo.abierto"
+            (click)="alternarGrupo(grupo.titulo, grupo.abierto)"
+          >
+            <span>{{ grupo.titulo }}</span>
+            <i
+              class="pi"
+              [class.pi-angle-down]="grupo.abierto"
+              [class.pi-angle-right]="!grupo.abierto"
+            ></i>
+          </button>
+        }
       }
-      @for (item of grupo.items; track item.ruta) {
+      <!-- En el menú contraído (solo íconos) se ven todos los grupos. -->
+      @for (item of compacto || grupo.abierto ? grupo.items : []; track item.ruta) {
         <a
           class="enlace"
           [routerLink]="item.ruta"

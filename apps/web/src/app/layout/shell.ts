@@ -20,6 +20,16 @@ import { MENU } from './navegacion';
 
 const CLAVE_TEMA = 'nt-tema';
 const CLAVE_MENU = 'nt-menu-compacto';
+/** Grupos del menú que el usuario abrió o cerró: { titulo: abierto }. */
+const CLAVE_GRUPOS = 'nt-menu-grupos';
+
+function leerGrupos(): Record<string, boolean> {
+  try {
+    return JSON.parse(leerPreferencia(CLAVE_GRUPOS) ?? '{}');
+  } catch {
+    return {};
+  }
+}
 /** Desde este ancho hacia abajo el menú no es lateral sino un panel que se abre encima. */
 const PANTALLA_ANGOSTA = '(max-width: 1024px)';
 
@@ -57,12 +67,18 @@ export class Shell {
       .join('')
       .toUpperCase(),
   );
-  readonly menu = computed(() =>
-    MENU.map((g) => ({
-      ...g,
-      items: g.items.filter((i) => !i.permiso || this.sesion.puede(i.permiso)),
-    })).filter((g) => g.items.length),
-  );
+  /** Lo que el usuario abrió o cerró; los demás grupos usan su valor por defecto. */
+  private readonly gruposElegidos = signal(leerGrupos());
+  readonly menu = computed(() => {
+    const url = this.url();
+    const elegidos = this.gruposElegidos();
+    return MENU.map((g) => {
+      const items = g.items.filter((i) => !i.permiso || this.sesion.puede(i.permiso));
+      // El grupo de la pantalla actual siempre se ve.
+      const actual = items.some((i) => url.startsWith(i.ruta));
+      return { ...g, items, abierto: !g.titulo || actual || (elegidos[g.titulo] ?? !g.plegado) };
+    }).filter((g) => g.items.length);
+  });
   readonly menuVisible = signal(false);
   /** Menú lateral reducido a íconos, con el nombre en un tooltip. */
   readonly menuCompacto = signal(leerPreferencia(CLAVE_MENU) === 'si');
@@ -118,6 +134,11 @@ export class Shell {
     inject(DestroyRef).onDestroy(() =>
       this.consultaAngosta?.removeEventListener('change', alCambiar),
     );
+  }
+
+  alternarGrupo(titulo: string, abierto: boolean): void {
+    this.gruposElegidos.update((g) => ({ ...g, [titulo]: !abierto }));
+    guardarPreferencia(CLAVE_GRUPOS, JSON.stringify(this.gruposElegidos()));
   }
 
   alternarTema(): void {

@@ -11,6 +11,7 @@ import type {
   EstadoGpsDto,
   FiltroRecorrido,
   RecorridoDto,
+  VehiculoGpsDto,
 } from '@nexustrack/shared';
 import { invalido } from '../comun/errores.js';
 import { chileAUtc } from '../comun/fechas.js';
@@ -20,12 +21,15 @@ import { FmTrackService } from './fm-track.js';
 import { CapturaGpsService, HistorialGpsService } from './historial-gps.js';
 
 class FiltroRecorridoDto implements FiltroRecorrido {
-  @Texto('Patente', { max: 12, mayusculas: true }) patente!: string;
+  @Texto('Patente', { opcional: true, max: 12, mayusculas: true })
+  patente?: string;
+  @Texto('Unidad', { opcional: true, max: 64 }) vehiculoId?: string;
   @FechaHora('Salida') desde!: string;
   @FechaHora('Llegada') hasta!: string;
 }
 
-const MAX_DIAS = 10;
+/** Un mes: lo que alcanza a guardar el historial (GPS_RETENCION_DIAS, mínimo 31). */
+const MAX_DIAS = 31;
 const VIGENCIA_CACHE = 5 * 60_000;
 const MAX_CACHE = 50;
 
@@ -56,6 +60,12 @@ export class RecorridosService {
     private readonly historial: HistorialGpsService,
   ) {}
 
+  async vehiculos() {
+    return [...(await this.gps.listarVehiculos())].sort((a, b) =>
+      a.nombre.localeCompare(b.nombre, 'es'),
+    );
+  }
+
   async obtener(f: FiltroRecorrido): Promise<RecorridoDto> {
     const desde = chileAUtc(f.desde);
     const hasta = new Date(Math.min(chileAUtc(f.hasta).getTime(), Date.now()));
@@ -68,10 +78,18 @@ export class RecorridosService {
         `El recorrido puede abarcar como máximo ${MAX_DIAS} días.`,
       );
 
-    const vehiculo = await this.gps.buscarVehiculo(f.patente);
+    if (!f.patente === !f.vehiculoId)
+      throw invalido('Indique la patente o la unidad del GPS.');
+    const vehiculo = f.vehiculoId
+      ? ((await this.gps.listarVehiculos()).find(
+          (v) => v.id === f.vehiculoId,
+        ) ?? null)
+      : await this.gps.buscarVehiculo(f.patente!);
     if (!vehiculo)
       throw new NotFoundException(
-        `El camión ${f.patente} no está registrado en el GPS.`,
+        f.patente
+          ? `El camión ${f.patente} no está registrado en el GPS.`
+          : 'La unidad no está en el grupo del GPS.',
       );
 
     const clave = `${vehiculo.id}|${desde.toISOString()}|${hasta.toISOString()}`;
@@ -101,7 +119,7 @@ export class RecorridosService {
       fuente = guardadas.length ? 'mixta' : 'gps';
     }
     const recorrido: RecorridoDto = {
-      patente: f.patente,
+      patente: f.patente ?? vehiculo.nombre,
       vehiculo: vehiculo.nombre,
       desde: desde.toISOString(),
       hasta: hasta.toISOString(),
@@ -123,6 +141,14 @@ export class RecorridosController {
     private readonly servicio: RecorridosService,
     private readonly captura: CapturaGpsService,
   ) {}
+
+  /** Unidades del grupo del GPS, para elegir una en Trazabilidad. */
+  @Get('vehiculos') async vehiculos(): Promise<VehiculoGpsDto[]> {
+    return (await this.servicio.vehiculos()).map(({ id, nombre }) => ({
+      id,
+      nombre,
+    }));
+  }
 
   /** Diagnóstico de la captura: vehículos del grupo, última vuelta y posiciones guardadas. */
   @Get('estado') estado(): Promise<EstadoGpsDto> {

@@ -99,6 +99,27 @@
   padding: 1rem 0.75rem 0.4rem;
 }
 
+.grupo.plegable {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  border: none;
+  background: none;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 6px;
+
+  i {
+    font-size: 0.75rem;
+  }
+
+  &:hover {
+    color: var(--p-text-color);
+  }
+}
+
 .enlace {
   display: flex;
   align-items: center;

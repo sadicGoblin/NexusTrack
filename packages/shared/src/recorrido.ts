@@ -3,11 +3,18 @@
  * historial: lo entrega el proveedor GPS y la API lo resume en viajes y paradas.
  */
 
-/** Momento en hora de Chile: "AAAA-MM-DDTHH:mm". */
+/** Momento en hora de Chile: "AAAA-MM-DDTHH:mm". Se indica la patente o la unidad del GPS. */
 export interface FiltroRecorrido {
-  patente: string;
+  patente?: string;
+  vehiculoId?: string;
   desde: string;
   hasta: string;
+}
+
+/** Unidad del grupo de fm-track (su nombre lleva la patente y el conductor). */
+export interface VehiculoGpsDto {
+  id: string;
+  nombre: string;
 }
 
 export interface Coordenada {
