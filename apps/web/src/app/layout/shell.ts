@@ -141,6 +141,23 @@ export class Shell {
     guardarPreferencia(CLAVE_GRUPOS, JSON.stringify(this.gruposElegidos()));
   }
 
+  /** Primer grupo con título: antes de él va «Abrir todo / Cerrar todo». */
+  readonly primerGrupo = computed(() => this.menu().find((g) => g.titulo)?.titulo);
+  readonly todosAbiertos = computed(() =>
+    this.menu()
+      .filter((g) => g.titulo)
+      .every((g) => g.abierto),
+  );
+
+  /** Abre o cierra todos los grupos de una vez (el de la pantalla actual sigue visible). */
+  alternarTodos(): void {
+    const abrir = !this.todosAbiertos();
+    this.gruposElegidos.set(
+      Object.fromEntries(MENU.filter((g) => g.titulo).map((g) => [g.titulo, abrir])),
+    );
+    guardarPreferencia(CLAVE_GRUPOS, JSON.stringify(this.gruposElegidos()));
+  }
+
   alternarTema(): void {
     this.oscuro.update((v) => !v);
     aplicarTema(this.oscuro());

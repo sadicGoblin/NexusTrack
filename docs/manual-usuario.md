@@ -31,7 +31,7 @@ Haga clic en una fila para abrir el registro.
 
 ## Menú
 
-Los grupos del menú (Operación, Informes, Mantenedores, Administración) se abren y cierran con un clic en su título; cada navegador recuerda cómo los dejó. Mantenedores y Administración parten cerrados, y el grupo de la pantalla en que está se muestra siempre. Con el menú contraído (solo íconos) se ven todos.
+Los grupos del menú (Operación, Informes, Mantenedores, Administración) se abren y cierran con un clic en su título; cada navegador recuerda cómo los dejó. Mantenedores y Administración parten cerrados, y el grupo de la pantalla en que está se muestra siempre. **Abrir todo** / **Cerrar todo**, sobre los grupos, los despliega o pliega de una vez. Con el menú contraído (solo íconos) se ven todos.
 
 ## Trazabilidad
 
