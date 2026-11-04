@@ -12,7 +12,14 @@ import path from 'node:path';
 import ExcelJS from 'exceljs';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { hash } from '@node-rs/argon2';
-import { CATALOGOS, esRutValido, formatearRut, generarTramo, type TipoCatalogo } from '@nexustrack/shared';
+import {
+  CATALOGOS,
+  esRutValido,
+  formatearCodigo,
+  formatearRut,
+  generarTramo,
+  type TipoCatalogo,
+} from '@nexustrack/shared';
 import { PrismaClient, type Prisma } from '../apps/api/src/generated/prisma/client.js';
 import { fecha, leerTabla, normalizar, numero, texto, textoONulo } from './planilla.js';
 
@@ -205,7 +212,7 @@ async function cargarPackings(ws: ExcelJS.Worksheet) {
     if (existente) {
       await prisma.packing.update({ where: { id: existente.id }, data });
     } else {
-      const codigo = texto(f['Código Packing']) || (await siguienteCodigo('PACKING', 'PK'));
+      const codigo = formatearCodigo(texto(f['Código Packing'])) || (await siguienteCodigo('PACKING', 'PK'));
       await prisma.packing.create({ data: { codigo, ...data } });
     }
     n++;
@@ -340,7 +347,7 @@ async function cargarRutas(ws: ExcelJS.Worksheet) {
     if (existente) {
       await prisma.rutaTarifa.update({ where: { id: existente.id }, data });
     } else {
-      const codigo = texto(f['Código']) || (await siguienteCodigo('RUTA_TARIFA', 'RT'));
+      const codigo = formatearCodigo(texto(f['Código'])) || (await siguienteCodigo('RUTA_TARIFA', 'RT'));
       await prisma.rutaTarifa.create({ data: { codigo, ...data } });
     }
     n++;

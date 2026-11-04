@@ -25,11 +25,11 @@ import { invalido, enUso, noEncontrado } from '../comun/errores.js';
 import { aFecha, aIso } from '../comun/fechas.js';
 import {
   Booleano,
+  Codigo,
   Decimal,
   Fecha,
   Id,
   Monto,
-  Texto,
 } from '../comun/validacion.js';
 import { AuditoriaService } from '../comun/auditoria.service.js';
 import { ReferenciasService } from '../comun/referencias.service.js';
@@ -38,8 +38,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import type { Prisma } from '../generated/prisma/client.js';
 
 class RutaTarifaDtoIn implements RutaTarifaInput {
-  @Texto('Código', { opcional: true, max: 30, mayusculas: true }) codigo?:
-    string | null;
+  @Codigo('Código') codigo?: string | null;
   @Id('Cliente') clienteId!: number;
   @Id('Origen') origenId!: number;
   @Id('Destino') destinoId!: number;

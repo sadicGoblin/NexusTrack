@@ -7,6 +7,7 @@ import {
   comisionFlete,
   esFechaIso,
   esRutValido,
+  formatearCodigo,
   formatearFecha,
   formatearPesos,
   formatearRut,
@@ -76,6 +77,13 @@ describe('montos y cálculos', () => {
   });
   it('genera el tramo como en la planilla', () => {
     expect(generarTramo('TALCA', 'VALPARAISO', 'CONTENEDOR')).toBe('TALCA - VALPARAISO - CONTENEDOR');
+  });
+  it('pone guion a los códigos de packings y rutas', () => {
+    expect(formatearCodigo('COX005')).toBe('COX-005');
+    expect(formatearCodigo(' cox 5 ')).toBe('COX-005');
+    expect(formatearCodigo('COX_1234')).toBe('COX-1234');
+    expect(formatearCodigo('PK-001')).toBe('PK-001');
+    expect(formatearCodigo('A1-B')).toBe('A1-B');
   });
   it('suma las guías del ejemplo de la planilla', () => {
     expect(

@@ -130,6 +130,16 @@ describe('Datos iniciales y mantenedores', () => {
         .expect(201)
     ).body;
     expect(p.codigo).toBe('PK-003');
+    const conCodigo = (
+      await c
+        .post('/packings', {
+          codigo: 'cox5',
+          nombre: 'planta sur',
+          clienteId: cliente.id,
+        })
+        .expect(201)
+    ).body;
+    expect(conCodigo.codigo).toBe('COX-005');
     const r = (
       await c
         .post('/rutas-tarifas', {

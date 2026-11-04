@@ -9,6 +9,16 @@ export function generarTramo(origen: string, destino: string, unidad: string): s
   return [origen, destino, unidad].map((s) => s.trim()).join(' - ');
 }
 
+/**
+ * Código de packing o ruta tarifa: letras, guion y número de al menos 3 dígitos, como los que
+ * asigna el sistema (COX005, cox 5 o COX_005 → COX-005). Otra forma queda tal cual, en mayúsculas.
+ */
+export function formatearCodigo(codigo: string): string {
+  const t = codigo.trim().toUpperCase();
+  const m = /^([A-Z]+)[\s_.-]*(\d+)$/.exec(t);
+  return m ? `${m[1]}-${m[2]!.padStart(3, '0')}` : t;
+}
+
 /** Total de una línea de guía: cantidad × valor unitario, en pesos enteros. */
 export function totalLineaGuia(cantidadTarifa: number, valorUnitario: number): number {
   return Math.round((cantidadTarifa || 0) * (valorUnitario || 0));

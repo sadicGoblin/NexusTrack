@@ -20,7 +20,7 @@ import type {
 } from '@nexustrack/shared';
 import { RequierePermiso, UsuarioActual } from '../comun/decoradores.js';
 import { enUso, noEncontrado } from '../comun/errores.js';
-import { Booleano, Id, Texto } from '../comun/validacion.js';
+import { Booleano, Codigo, Id, Texto } from '../comun/validacion.js';
 import { AuditoriaService } from '../comun/auditoria.service.js';
 import { ReferenciasService } from '../comun/referencias.service.js';
 import { SecuenciasService } from '../comun/secuencias.service.js';
@@ -28,8 +28,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import type { Prisma } from '../generated/prisma/client.js';
 
 class PackingDtoIn implements PackingInput {
-  @Texto('Código', { opcional: true, max: 30, mayusculas: true }) codigo?:
-    string | null;
+  @Codigo('Código') codigo?: string | null;
   @Texto('Packing', { max: 120, mayusculas: true }) nombre!: string;
   @Texto('Ubicación', { opcional: true, max: 250, mayusculas: true })
   ubicacion?: string | null;

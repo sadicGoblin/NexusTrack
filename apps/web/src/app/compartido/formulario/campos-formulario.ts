@@ -42,11 +42,13 @@ export class CamposFormulario {
     return this.form().getRawValue();
   }
 
-  /** Al salir del campo: mayúsculas. */
+  /** Al salir del campo: mayúsculas y el formato propio del campo. */
   normalizar(c: CampoFormulario): void {
     const control = this.form().get(c.campo);
     const v = control?.value;
-    if (!c.mayusculas || typeof v !== 'string' || !v) return;
-    if (v.toUpperCase() !== v) control!.setValue(v.toUpperCase());
+    if (typeof v !== 'string' || !v) return;
+    let nuevo = c.mayusculas ? v.toUpperCase() : v;
+    if (c.formatear) nuevo = c.formatear(nuevo);
+    if (nuevo !== v) control!.setValue(nuevo);
   }
 }

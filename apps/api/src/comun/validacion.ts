@@ -25,6 +25,7 @@ import {
 import {
   esFechaIso,
   esHora,
+  formatearCodigo,
   formatearRut,
   limpiarRut,
 } from '@nexustrack/shared';
@@ -68,6 +69,16 @@ export function Texto(
     MaxLength(max, {
       message: `${etiqueta} admite como máximo ${max} caracteres.`,
     }),
+  );
+}
+
+/** Código de packing o ruta tarifa (opcional): COX005 → COX-005, ver formatearCodigo. */
+export function Codigo(etiqueta: string) {
+  return applyDecorators(
+    Texto(etiqueta, { opcional: true, max: 30 }),
+    Transform(({ value }) =>
+      typeof value === 'string' && value ? formatearCodigo(value) : value,
+    ),
   );
 }
 

@@ -45,6 +45,8 @@ export interface CampoFormulario {
   /** Separador de miles en números (por defecto sí, salvo en 'entero' marcado como año). */
   agrupar?: boolean;
   mayusculas?: boolean;
+  /** Formato del texto al salir del campo y al guardar (por ejemplo, COX005 → COX-005). */
+  formatear?: (valor: string) => string;
   /** Valor mostrado en campos calculados (solo lectura). */
   calcular?: (valores: Record<string, any>) => string;
   /** No editable una vez creado el registro. */
@@ -127,6 +129,7 @@ export function aEntrada(campos: CampoFormulario[], form: FormGroup): Record<str
     if (c.tipo === 'porcentaje' && v !== null && v !== undefined)
       v = Math.round((v as number) * 100) / 10000;
     if (c.tipo === 'rut' && v) v = formatearRut(v as string);
+    if (c.formatear && typeof v === 'string') v = c.formatear(v);
     salida[c.campo] = v ?? null;
   }
   return salida;

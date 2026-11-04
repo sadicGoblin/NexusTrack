@@ -1,5 +1,5 @@
 import { Component, inject } from '@angular/core';
-import { generarTramo } from '@nexustrack/shared';
+import { formatearCodigo, generarTramo } from '@nexustrack/shared';
 import { DatosMaestrosService } from '../../nucleo/datos-maestros.service';
 import { Mantenedor, type ConfigMantenedor } from '../../compartido/mantenedor/mantenedor';
 
@@ -48,7 +48,8 @@ export class RutasTarifas {
         tipo: 'texto',
         mayusculas: true,
         max: 30,
-        ayuda: 'Si lo deja vacío se asigna RT-001, RT-002…',
+        formatear: formatearCodigo,
+        ayuda: 'Formato COX-005. Si lo deja vacío se asigna RT-001, RT-002…',
       },
       {
         campo: 'clienteId',

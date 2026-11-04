@@ -1,4 +1,5 @@
 import { Component, inject } from '@angular/core';
+import { formatearCodigo } from '@nexustrack/shared';
 import { DatosMaestrosService } from '../../nucleo/datos-maestros.service';
 import { Mantenedor, type ConfigMantenedor } from '../../compartido/mantenedor/mantenedor';
 
@@ -36,7 +37,8 @@ export class Packings {
         tipo: 'texto',
         mayusculas: true,
         max: 30,
-        ayuda: 'Si lo deja vacío se asigna PK-001, PK-002…',
+        formatear: formatearCodigo,
+        ayuda: 'Formato COX-005. Si lo deja vacío se asigna PK-001, PK-002…',
       },
       {
         campo: 'clienteId',
