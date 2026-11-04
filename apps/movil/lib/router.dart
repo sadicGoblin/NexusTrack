@@ -8,6 +8,7 @@ import 'pantallas/flota.dart';
 import 'pantallas/ingreso.dart';
 import 'pantallas/inicio.dart';
 import 'pantallas/listados.dart';
+import 'tema.dart';
 
 final _raiz = GlobalKey<NavigatorState>();
 
@@ -88,32 +89,37 @@ class _Marco extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
     body: navegacion,
-    bottomNavigationBar: NavigationBar(
-      selectedIndex: navegacion.currentIndex,
-      onDestinationSelected: (i) =>
-          navegacion.goBranch(i, initialLocation: i == navegacion.currentIndex),
-      destinations: const [
-        NavigationDestination(
-          icon: Icon(Icons.home_outlined),
-          selectedIcon: Icon(Icons.home),
-          label: 'Inicio',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.local_shipping_outlined),
-          selectedIcon: Icon(Icons.local_shipping),
-          label: 'Fletes',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.receipt_long_outlined),
-          selectedIcon: Icon(Icons.receipt_long),
-          label: 'Vales',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.groups_outlined),
-          selectedIcon: Icon(Icons.groups),
-          label: 'Flota',
-        ),
-      ],
+    bottomNavigationBar: DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border(top: BorderSide(color: context.nt.borde)),
+      ),
+      child: NavigationBar(
+        selectedIndex: navegacion.currentIndex,
+        onDestinationSelected: (i) =>
+            navegacion.goBranch(i, initialLocation: i == navegacion.currentIndex),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.space_dashboard_outlined),
+            selectedIcon: Icon(Icons.space_dashboard_rounded),
+            label: 'Inicio',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.local_shipping_outlined),
+            selectedIcon: Icon(Icons.local_shipping_rounded),
+            label: 'Fletes',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.receipt_long_outlined),
+            selectedIcon: Icon(Icons.receipt_long_rounded),
+            label: 'Vales',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.groups_2_outlined),
+            selectedIcon: Icon(Icons.groups_2_rounded),
+            label: 'Flota',
+          ),
+        ],
+      ),
     ),
   );
 }

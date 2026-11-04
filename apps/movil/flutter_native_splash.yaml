@@ -1,0 +1,8 @@
+# Pantalla de arranque: dart run flutter_native_splash:create
+flutter_native_splash:
+  color: "#0B3D66"
+  image: assets/icono/arranque.png
+  android_12:
+    color: "#0B3D66"
+    image: assets/icono/arranque-android12.png
+  web: false

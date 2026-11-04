@@ -7,59 +7,113 @@ import '../componentes/estado.dart';
 import '../datos/repositorio.dart';
 import '../modelos/modelos.dart';
 import '../nucleo/formato.dart';
+import '../tema.dart';
 
 bool _vacio(String? v) => v == null || v.trim().isEmpty || v == '—';
 
 /// Sección que omite los datos vacíos; si no queda ninguno, no se muestra.
-Widget _seccion(String titulo, List<Dato> datos) {
+Widget _seccion(String titulo, IconData icono, List<Dato> datos) {
   final visibles = datos.where((d) => !_vacio(d.valor)).toList();
-  return visibles.isEmpty ? const SizedBox.shrink() : SeccionDatos(titulo: titulo, datos: visibles);
+  return visibles.isEmpty
+      ? const SizedBox.shrink()
+      : SeccionDatos(titulo: titulo, icono: icono, datos: visibles);
 }
 
 String _vehiculo(String camion, String? remolque) =>
     remolque == null ? camion : '$camion / $remolque';
 
-/// Encabezado del detalle: número, estado y una línea de contexto.
+/// Encabezado del detalle sobre el degradado de la marca: tipo, número, estado, contexto y monto.
 class _Cabecera extends StatelessWidget {
   const _Cabecera({
+    required this.icono,
     required this.tipo,
     required this.numero,
     required this.estado,
     required this.subtitulo,
+    this.monto,
+    this.etiquetaMonto = 'Total',
   });
+  final IconData icono;
   final String tipo;
   final int numero;
   final String estado;
   final String subtitulo;
+  final String? monto;
+  final String etiquetaMonto;
 
   @override
   Widget build(BuildContext context) {
-    final tema = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+    final tenue = Colors.white.withValues(alpha: 0.72);
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
+      decoration: BoxDecoration(
+        gradient: Marca.degradado,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: context.nt.sombra,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            tipo,
-            style: tema.textTheme.labelLarge?.copyWith(color: tema.colorScheme.onSurfaceVariant),
-          ),
-          const SizedBox(height: 2),
           Row(
             children: [
-              Text(
-                'N° ${correlativo(numero)}',
-                style: tema.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: tema.colorScheme.primary,
+              Icon(icono, size: 18, color: Marca.celeste),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  tipo,
+                  style: TextStyle(color: tenue, fontSize: 13, fontWeight: FontWeight.w600),
                 ),
               ),
-              const SizedBox(width: 12),
-              EstadoChip(estado),
+              EstadoChip(estado, sobreOscuro: true),
             ],
           ),
+          const SizedBox(height: 10),
+          Text(
+            'N° ${correlativo(numero)}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 28,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.6,
+              fontFeatures: cifras,
+            ),
+          ),
           const SizedBox(height: 4),
-          Text(subtitulo, style: tema.textTheme.bodyMedium),
+          Text(
+            subtitulo,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.88),
+              fontSize: 14,
+              height: 1.35,
+            ),
+          ),
+          if (monto != null) ...[
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+              ),
+              child: Row(
+                children: [
+                  Text(etiquetaMonto, style: TextStyle(color: tenue, fontSize: 13)),
+                  const Spacer(),
+                  Text(
+                    monto!,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                      fontFeatures: cifras,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -83,7 +137,7 @@ class _Detalle<T> extends ConsumerWidget {
         onRefresh: () => ref.refresh(proveedor.future),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.only(bottom: 32),
+          padding: const EdgeInsets.only(top: 4, bottom: 32),
           children: contenido(context, d),
         ),
       ),
@@ -92,25 +146,27 @@ class _Detalle<T> extends ConsumerWidget {
 }
 
 /// Datos de la orden de retiro de la que depende un documento, con enlace a ella.
-Widget _seccionRetiro(BuildContext context, ResumenRetiro r) => _seccion('Orden de retiro', [
-  Dato(
-    'Orden de retiro',
-    'N° ${correlativo(r.numero)}',
-    alTocar: () => context.push('/retiros/${r.id}'),
-  ),
-  Dato('Cliente', r.cliente),
-  Dato('Ruta', '${r.origen} → ${r.destino}'),
-  Dato('Conductor', r.conductor),
-  Dato('RUT conductor', r.conductorRut),
-  Dato('Empresa', r.empresa),
-  Dato('Camión / remolque', _vehiculo(r.camion, r.remolque)),
-]);
+Widget _seccionRetiro(BuildContext context, ResumenRetiro r) =>
+    _seccion('Orden de retiro', Icons.assignment_outlined, [
+      Dato(
+        'Orden de retiro',
+        'N° ${correlativo(r.numero)}',
+        alTocar: () => context.push('/retiros/${r.id}'),
+      ),
+      Dato('Cliente', r.cliente),
+      Dato('Ruta', '${r.origen} → ${r.destino}'),
+      Dato('Conductor', r.conductor),
+      Dato('RUT conductor', r.conductorRut),
+      Dato('Empresa', r.empresa),
+      Dato('Camión / remolque', _vehiculo(r.camion, r.remolque)),
+    ]);
 
 Widget _observaciones(String? texto) => _vacio(texto)
     ? const SizedBox.shrink()
     : SeccionDatos(
         titulo: 'Observaciones',
-        datos: [Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(texto!))],
+        icono: Icons.notes_rounded,
+        datos: [Padding(padding: const EdgeInsets.fromLTRB(16, 4, 16, 10), child: Text(texto!))],
       );
 
 class DetalleRetiro extends StatelessWidget {
@@ -123,34 +179,35 @@ class DetalleRetiro extends StatelessWidget {
     proveedor: retiroProvider(id),
     contenido: (context, o) => [
       _Cabecera(
+        icono: Icons.assignment_outlined,
         tipo: 'Orden de retiro',
         numero: o.numero,
         estado: o.estado,
         subtitulo: '${o.cliente} · ${o.origen} → ${o.destino}',
       ),
       if (o.estado == 'ANULADA') AvisoAnulado(o.motivoAnulacion),
-      _seccion('Flete', [
+      _seccion('Flete', Icons.route_outlined, [
         Dato('Fecha', fecha(o.fecha)),
         Dato('Trazabilidad', o.trazabilidad),
         Dato('Cliente', o.cliente),
         Dato('Ruta', '${o.origen} → ${o.destino}'),
         Dato('Destino final', o.destinoFinal),
       ]),
-      _seccion('Transporte', [
+      _seccion('Transporte', Icons.local_shipping_outlined, [
         Dato('Conductor', o.conductor),
         Dato('RUT conductor', o.conductorRut),
         Dato('Empresa', o.empresa),
         Dato('Camión', o.camion),
         Dato('Remolque', o.remolque == null ? null : '${o.remolque} · ${texto(o.tipoRemolque)}'),
       ]),
-      _seccion('Retiro y carga', [
+      _seccion('Retiro y carga', Icons.warehouse_outlined, [
         Dato('Depósito de retiro', o.depositoRetiro),
         Dato('Packing de carga', o.packingCarga),
         Dato('Carga programada', fechaHora(o.fechaCarga, o.horaCarga)),
         Dato('Depósito de entrega', o.depositoEntrega),
         Dato('Packing de entrega', o.packingEntrega),
       ]),
-      _seccion('Embarque', [
+      _seccion('Embarque', Icons.directions_boat_outlined, [
         Dato('Nave', o.nave),
         Dato('MTB', o.mtb),
         Dato('Booking', o.booking),
@@ -176,26 +233,36 @@ class _DocumentosDelRetiro extends ConsumerWidget {
     final combustible = ref.watch(valesCombustibleDeRetiroProvider(o.id)).value ?? const [];
     return SeccionDatos(
       titulo: 'Documentos del flete',
+      icono: Icons.folder_open_outlined,
       datos: [
         o.ordenCargaId == null
-            ? const Dato('Orden de carga', 'Aún no tiene')
+            ? const Dato('Orden de carga', 'Aún no tiene', icono: Icons.inventory_2_outlined)
             : Dato(
                 'Orden de carga',
                 'N° ${correlativo(o.ordenCargaNumero)}',
+                icono: Icons.inventory_2_outlined,
                 alTocar: () => context.push('/cargas/${o.ordenCargaId}'),
               ),
-        if (dinero.isEmpty) const Dato('Vales de dinero', 'Aún no tiene'),
+        if (dinero.isEmpty)
+          const Dato('Vales de dinero', 'Aún no tiene', icono: Icons.payments_outlined),
         for (final v in dinero)
           Dato(
             'Vale de dinero N° ${correlativo(v.numero)}',
             '${pesos(v.monto)}${v.estado == 'ANULADO' ? ' (anulado)' : ''}',
+            icono: Icons.payments_outlined,
             alTocar: () => context.push('/vales-dinero/${v.id}'),
           ),
-        if (combustible.isEmpty) const Dato('Vales de combustible', 'Aún no tiene'),
+        if (combustible.isEmpty)
+          const Dato(
+            'Vales de combustible',
+            'Aún no tiene',
+            icono: Icons.local_gas_station_outlined,
+          ),
         for (final v in combustible)
           Dato(
             'Vale de combustible N° ${correlativo(v.numero)}',
             '${litros(v.totalLitros)}${v.estado == 'ANULADO' ? ' (anulado)' : ''}',
+            icono: Icons.local_gas_station_outlined,
             alTocar: () => context.push('/vales-combustible/${v.id}'),
           ),
       ],
@@ -213,19 +280,22 @@ class DetalleCarga extends StatelessWidget {
     proveedor: cargaProvider(id),
     contenido: (context, o) => [
       _Cabecera(
+        icono: Icons.inventory_2_outlined,
         tipo: 'Orden de carga',
         numero: o.numero,
         estado: o.estado,
         subtitulo: '${o.retiro.cliente} · ${o.tramo ?? '${o.retiro.origen} → ${o.retiro.destino}'}',
+        monto: pesos(o.totalNeto),
+        etiquetaMonto: 'Total neto',
       ),
       if (o.estado == 'ANULADA') AvisoAnulado(o.motivoAnulacion),
-      _seccion('Carga', [
+      _seccion('Carga', Icons.inventory_2_outlined, [
         Dato('Fecha de carga', fechaHora(o.fechaCarga, o.horaCarga)),
         Dato('Tramo', o.tramo),
         Dato('Packing de carga', o.packingCarga),
         Dato('Camión / remolque', _vehiculo(o.patenteCamion, o.patenteRemolque)),
         Dato('Hoja de ruta', o.hojaRuta == null ? null : 'N° ${correlativo(o.hojaRuta)}'),
-        Dato('Guías confirmadas', o.guiasConfirmadas),
+        Dato('Guías confirmadas', o.guiasConfirmadas == null ? null : momento(o.guiasConfirmadas)),
         Dato('Total neto', pesos(o.totalNeto), destacado: true),
         if (o.rendicionId != null)
           Dato(
@@ -237,6 +307,7 @@ class DetalleCarga extends StatelessWidget {
       if (o.guias.isNotEmpty)
         SeccionDatos(
           titulo: 'Guías del flete (${o.guias.length})',
+          icono: Icons.description_outlined,
           datos: [for (final g in o.guias) _GuiaFlete(g)],
         ),
       _observaciones(o.observaciones),
@@ -258,7 +329,7 @@ class _GuiaFlete extends StatelessWidget {
       if (g.cantidadEspecie != null) '${numero(g.cantidadEspecie)} ${g.umEspecie ?? ''}'.trim(),
     ].whereType<String>().join(' · ');
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -273,7 +344,10 @@ class _GuiaFlete extends StatelessWidget {
               const Spacer(),
               Text(
                 pesos(g.total),
-                style: tema.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+                style: tema.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: cifras,
+                ),
               ),
             ],
           ),
@@ -300,13 +374,16 @@ class DetalleValeDinero extends StatelessWidget {
     proveedor: valeDineroProvider(id),
     contenido: (context, v) => [
       _Cabecera(
+        icono: Icons.payments_outlined,
         tipo: 'Vale de dinero',
         numero: v.numero,
         estado: v.estado,
-        subtitulo: '${v.conductor} · ${pesos(v.monto)}',
+        subtitulo: v.conductor,
+        monto: pesos(v.monto),
+        etiquetaMonto: 'Monto',
       ),
       if (v.estado == 'ANULADO') AvisoAnulado(v.motivoAnulacion),
-      _seccion('Vale', [
+      _seccion('Vale', Icons.payments_outlined, [
         Dato('Fecha de entrega', fecha(v.fechaEntrega)),
         Dato('Concepto', v.concepto),
         Dato('Glosa', v.glosa),
@@ -316,7 +393,7 @@ class DetalleValeDinero extends StatelessWidget {
       ]),
       if (v.retiro != null) _seccionRetiro(context, v.retiro!),
       if (v.estadia != null)
-        _seccion('Estadía', [
+        _seccion('Estadía', Icons.hourglass_bottom_rounded, [
           Dato(
             'Estadía',
             'N° ${correlativo(v.estadia!.numero)}',
@@ -339,19 +416,21 @@ class DetalleValeCombustible extends StatelessWidget {
     proveedor: valeCombustibleProvider(id),
     contenido: (context, v) => [
       _Cabecera(
+        icono: Icons.local_gas_station_outlined,
         tipo: 'Vale de combustible',
         numero: v.numero,
         estado: v.estado,
         subtitulo: '${v.retiro.conductor} · ${litros(v.totalLitros)}',
+        monto: pesos(v.total),
       ),
       if (v.estado == 'ANULADO') AvisoAnulado(v.motivoAnulacion),
-      _seccion('Entrega', [
+      _seccion('Entrega', Icons.place_outlined, [
         Dato('Fecha de entrega', fechaHora(v.fechaEntrega, v.horaEntrega)),
         Dato('Sitio de entrega', v.sitioEntrega),
         Dato('Forma de pago', v.formaPago),
         Dato('Tipo de documento', v.tipoDocumento),
       ]),
-      _seccion('Combustible', [
+      _seccion('Combustible', Icons.local_gas_station_outlined, [
         Dato('Camión ${v.camion}', litros(v.litrosCamion)),
         if (v.remolque != null) Dato('Remolque ${v.remolque}', litros(v.litrosRemolque)),
         Dato('Total litros', litros(v.totalLitros)),
@@ -374,13 +453,16 @@ class DetalleRendicion extends StatelessWidget {
     proveedor: rendicionProvider(id),
     contenido: (context, r) => [
       _Cabecera(
+        icono: r.esEstadia ? Icons.hourglass_bottom_rounded : Icons.fact_check_outlined,
         tipo: r.esEstadia ? 'Rendición de estadía' : 'Rendición de fletes',
         numero: r.numero,
         estado: r.estado,
-        subtitulo: '${r.retiro?.cliente ?? r.conductor} · ${pesos(r.totalGeneral)}',
+        subtitulo: '${r.retiro?.cliente ?? r.conductor} · ${r.origen} → ${r.destino}',
+        monto: pesos(r.totalGeneral),
+        etiquetaMonto: 'Total rendido',
       ),
       if (r.estado == 'ANULADO') AvisoAnulado(r.motivoAnulacion),
-      _seccion(r.esEstadia ? 'Estadía' : 'Viaje', [
+      _seccion(r.esEstadia ? 'Estadía' : 'Viaje', Icons.route_outlined, [
         if (r.ordenCargaId != null)
           Dato(
             'Orden de carga',
@@ -403,18 +485,20 @@ class DetalleRendicion extends StatelessWidget {
       ]),
       SeccionDatos(
         titulo: 'Totales',
+        icono: Icons.calculate_outlined,
         datos: [
           Dato('Peajes', pesos(r.peajes)),
           Dato('Carga', pesos(r.carga)),
           Dato('Descarga', pesos(r.descarga)),
           Dato('Viáticos', pesos(r.totalViaticos)),
           Dato('Otros gastos', pesos(r.totalOtrosGastos)),
-          Dato('Total', pesos(r.totalGeneral), destacado: true),
+          Dato('Total rendido', pesos(r.totalGeneral), destacado: true),
         ],
       ),
       if (r.viaticos.isNotEmpty)
         SeccionDatos(
           titulo: 'Viáticos (${r.viaticos.length})',
+          icono: Icons.restaurant_outlined,
           datos: [
             for (final v in r.viaticos)
               Dato(
@@ -426,6 +510,7 @@ class DetalleRendicion extends StatelessWidget {
       if (r.gastos.isNotEmpty)
         SeccionDatos(
           titulo: 'Otros gastos (${r.gastos.length})',
+          icono: Icons.receipt_outlined,
           datos: [
             for (final g in r.gastos)
               Dato(

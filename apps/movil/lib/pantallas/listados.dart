@@ -20,13 +20,7 @@ class PantallaFletes extends StatelessWidget {
     child: Scaffold(
       appBar: AppBar(
         title: const Text('Fletes'),
-        bottom: const TabBar(
-          tabs: [
-            Tab(text: 'Retiros'),
-            Tab(text: 'Cargas'),
-            Tab(text: 'Rendiciones'),
-          ],
-        ),
+        bottom: const Pestanas(['Retiros', 'Cargas', 'Rendiciones']),
       ),
       body: TabBarView(
         children: [
@@ -38,12 +32,15 @@ class PantallaFletes extends StatelessWidget {
             buscable: (o) =>
                 '${o.numero} ${o.cliente} ${o.conductor} ${o.camion} ${o.remolque ?? ''} ${o.origen} ${o.destino}',
             tarjeta: (o) => TarjetaDocumento(
-              titulo: 'N° ${correlativo(o.numero)}',
+              icono: Icons.assignment_outlined,
+              numero: 'N° ${correlativo(o.numero)}',
+              fecha: fecha(o.fecha),
               estado: o.estado,
-              lineas: [
-                o.cliente,
-                '${o.origen} → ${o.destino} · ${fecha(o.fecha)}',
-                '${o.conductor} · ${_vehiculo(o.camion, o.remolque)}',
+              titulo: o.cliente,
+              ruta: (o.origen, o.destino),
+              detalles: [
+                (Icons.person_outline_rounded, o.conductor),
+                (Icons.local_shipping_outlined, _vehiculo(o.camion, o.remolque)),
               ],
               alTocar: () => context.push('/retiros/${o.id}'),
             ),
@@ -59,14 +56,18 @@ class PantallaFletes extends StatelessWidget {
               l.where((o) => o.estado != 'ANULADA').fold<int>(0, (s, o) => s + o.totalNeto),
             ),
             tarjeta: (o) => TarjetaDocumento(
-              titulo: 'N° ${correlativo(o.numero)}',
+              icono: Icons.inventory_2_outlined,
+              numero: 'N° ${correlativo(o.numero)}',
+              fecha: fechaHora(o.fechaCarga, o.horaCarga),
               estado: o.estado,
-              monto: pesos(o.totalNeto),
-              lineas: [
-                o.retiro.cliente,
-                '${o.tramo ?? '${o.retiro.origen} → ${o.retiro.destino}'} · ${fechaHora(o.fechaCarga, o.horaCarga)}',
-                '${o.retiro.conductor} · ${_vehiculo(o.patenteCamion, o.patenteRemolque)}',
+              titulo: o.retiro.cliente,
+              ruta: (o.retiro.origen, o.retiro.destino),
+              detalles: [
+                (Icons.person_outline_rounded, o.retiro.conductor),
+                (Icons.local_shipping_outlined, _vehiculo(o.patenteCamion, o.patenteRemolque)),
               ],
+              monto: pesos(o.totalNeto),
+              etiquetaMonto: 'Total neto',
               alTocar: () => context.push('/cargas/${o.id}'),
             ),
           ),
@@ -80,16 +81,20 @@ class PantallaFletes extends StatelessWidget {
               l.where((r) => r.estado != 'ANULADO').fold<int>(0, (s, r) => s + r.totalGeneral),
             ),
             tarjeta: (r) => TarjetaDocumento(
-              titulo: 'N° ${correlativo(r.numero)}',
+              icono: r.esEstadia ? Icons.hourglass_bottom_rounded : Icons.fact_check_outlined,
+              numero: 'N° ${correlativo(r.numero)}',
+              fecha: fecha(r.fecha),
               estado: r.estado,
-              monto: pesos(r.totalGeneral),
-              lineas: [
-                r.retiro?.cliente ?? 'Estadía en ${r.destino}',
-                r.ordenCargaNumero == null
-                    ? 'Estadía · ${fecha(r.fecha)}'
-                    : 'Orden de carga N° ${correlativo(r.ordenCargaNumero)} · ${fecha(r.fecha)}',
-                '${r.conductor} · ${_vehiculo(r.patenteCamion, r.patenteRemolque)}',
+              titulo: r.retiro?.cliente ?? 'Estadía en ${r.destino}',
+              ruta: (r.origen, r.destino),
+              detalles: [
+                if (r.ordenCargaNumero != null)
+                  (Icons.inventory_2_outlined, 'Carga N° ${correlativo(r.ordenCargaNumero)}'),
+                (Icons.person_outline_rounded, r.conductor),
+                (Icons.local_shipping_outlined, _vehiculo(r.patenteCamion, r.patenteRemolque)),
               ],
+              monto: pesos(r.totalGeneral),
+              etiquetaMonto: 'Total rendido',
               alTocar: () => context.push('/rendiciones/${r.id}'),
             ),
           ),
@@ -107,15 +112,7 @@ class PantallaVales extends StatelessWidget {
   Widget build(BuildContext context) => DefaultTabController(
     length: 2,
     child: Scaffold(
-      appBar: AppBar(
-        title: const Text('Vales'),
-        bottom: const TabBar(
-          tabs: [
-            Tab(text: 'Dinero'),
-            Tab(text: 'Combustible'),
-          ],
-        ),
-      ),
+      appBar: AppBar(title: const Text('Vales'), bottom: const Pestanas(['Dinero', 'Combustible'])),
       body: TabBarView(
         children: [
           Listado<ValeDinero>(
@@ -127,16 +124,26 @@ class PantallaVales extends StatelessWidget {
             total: (l) =>
                 pesos(l.where((v) => v.estado != 'ANULADO').fold<int>(0, (s, v) => s + v.monto)),
             tarjeta: (v) => TarjetaDocumento(
-              titulo: 'N° ${correlativo(v.numero)}',
+              icono: Icons.payments_outlined,
+              numero: 'N° ${correlativo(v.numero)}',
+              fecha: fecha(v.fechaEntrega),
               estado: v.estado,
-              monto: pesos(v.monto),
-              lineas: [
-                v.conductor,
+              titulo: v.conductor,
+              detalles: [
                 v.retiro != null
-                    ? 'Retiro N° ${correlativo(v.retiro!.numero)} · ${v.retiro!.cliente}'
-                    : 'Estadía N° ${correlativo(v.estadia?.numero)} · ${v.estadia?.destino ?? ''}',
-                'Entregado el ${fecha(v.fechaEntrega)} en ${v.sitioEntrega} · ${v.formaPago}',
+                    ? (
+                        Icons.assignment_outlined,
+                        'Retiro N° ${correlativo(v.retiro!.numero)} · ${v.retiro!.cliente}',
+                      )
+                    : (
+                        Icons.hourglass_bottom_rounded,
+                        'Estadía N° ${correlativo(v.estadia?.numero)} · ${v.estadia?.destino ?? ''}',
+                      ),
+                (Icons.place_outlined, v.sitioEntrega),
+                (Icons.credit_card_outlined, v.formaPago),
               ],
+              monto: pesos(v.monto),
+              etiquetaMonto: 'Monto',
               alTocar: () => context.push('/vales-dinero/${v.id}'),
             ),
           ),
@@ -152,14 +159,17 @@ class PantallaVales extends StatelessWidget {
               return '${litros(totalLitros)} · ${pesos(vigentes.fold<int>(0, (s, v) => s + v.total))}';
             },
             tarjeta: (v) => TarjetaDocumento(
-              titulo: 'N° ${correlativo(v.numero)}',
+              icono: Icons.local_gas_station_outlined,
+              numero: 'N° ${correlativo(v.numero)}',
+              fecha: fechaHora(v.fechaEntrega, v.horaEntrega),
               estado: v.estado,
-              monto: pesos(v.total),
-              lineas: [
-                v.retiro.conductor,
-                '${litros(v.totalLitros)} · ${_vehiculo(v.camion, v.remolque)}',
-                'Entregado el ${fechaHora(v.fechaEntrega, v.horaEntrega)} en ${v.sitioEntrega}',
+              titulo: v.retiro.conductor,
+              detalles: [
+                (Icons.water_drop_outlined, litros(v.totalLitros)),
+                (Icons.local_shipping_outlined, _vehiculo(v.camion, v.remolque)),
+                (Icons.place_outlined, v.sitioEntrega),
               ],
+              monto: pesos(v.total),
               alTocar: () => context.push('/vales-combustible/${v.id}'),
             ),
           ),

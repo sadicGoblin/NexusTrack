@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../datos/repositorio.dart';
 import '../nucleo/formato.dart';
+import '../tema.dart';
 import 'comunes.dart';
 
 /// Minúsculas y sin tildes, para buscar «valparaiso» y encontrar «VALPARAÍSO».
@@ -74,7 +75,7 @@ class _ListadoState<T> extends ConsumerState<Listado<T>> with AutomaticKeepAlive
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
           child: Column(
             children: [
-              if (widget.etiquetaVigentes != null)
+              if (widget.etiquetaVigentes != null) ...[
                 SizedBox(
                   width: double.infinity,
                   child: SegmentedButton<bool>(
@@ -90,36 +91,21 @@ class _ListadoState<T> extends ConsumerState<Listado<T>> with AutomaticKeepAlive
                     ),
                   ),
                 ),
-              if (!_consulta.vigentes)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    IconButton(
-                      onPressed: () => _moverMes(-1),
-                      icon: const Icon(Icons.chevron_left),
-                      tooltip: 'Mes anterior',
-                    ),
-                    SizedBox(
-                      width: 160,
-                      child: Text(
-                        nombreMes(_consulta.anio, _consulta.mes),
-                        textAlign: TextAlign.center,
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: esMesActual ? null : () => _moverMes(1),
-                      icon: const Icon(Icons.chevron_right),
-                      tooltip: 'Mes siguiente',
-                    ),
-                  ],
+                const SizedBox(height: 10),
+              ],
+              if (!_consulta.vigentes) ...[
+                _SelectorMes(
+                  mes: nombreMes(_consulta.anio, _consulta.mes),
+                  alRetroceder: () => _moverMes(-1),
+                  alAvanzar: esMesActual ? null : () => _moverMes(1),
                 ),
-              const SizedBox(height: 4),
+                const SizedBox(height: 10),
+              ],
               TextField(
                 onChanged: (t) => setState(() => _busqueda = normalizarBusqueda(t.trim())),
                 decoration: const InputDecoration(
-                  hintText: 'Buscar por número, cliente, conductor, patente…',
-                  prefixIcon: Icon(Icons.search),
+                  hintText: 'Buscar número, cliente, patente…',
+                  prefixIcon: Icon(Icons.search_rounded),
                   isDense: true,
                 ),
               ),
@@ -143,7 +129,7 @@ class _ListadoState<T> extends ConsumerState<Listado<T>> with AutomaticKeepAlive
                     physics: const AlwaysScrollableScrollPhysics(),
                     children: [
                       Aviso(
-                        icono: Icons.inbox_outlined,
+                        icono: todos.isEmpty ? Icons.inbox_outlined : Icons.search_off_rounded,
                         mensaje: todos.isEmpty
                             ? (_consulta.vigentes
                                   ? 'No hay ${widget.unidad} pendientes.'
@@ -161,12 +147,24 @@ class _ListadoState<T> extends ConsumerState<Listado<T>> with AutomaticKeepAlive
                     if (i == 0) {
                       final total = widget.total?.call(lista);
                       return Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 4, 20, 6),
-                        child: Text(
-                          '${lista.length} ${lista.length == 1 ? widget.singular : widget.unidad}${total != null ? ' · $total' : ''}',
-                          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+                        child: Row(
+                          children: [
+                            Text(
+                              '${lista.length} ${lista.length == 1 ? widget.singular : widget.unidad}',
+                              style: context.tema.textTheme.labelMedium?.copyWith(
+                                color: context.nt.tenue,
+                              ),
+                            ),
+                            const Spacer(),
+                            if (total != null)
+                              Text(
+                                total,
+                                style: context.tema.textTheme.labelLarge?.copyWith(
+                                  fontFeatures: cifras,
+                                ),
+                              ),
+                          ],
                         ),
                       );
                     }
@@ -180,4 +178,48 @@ class _ListadoState<T> extends ConsumerState<Listado<T>> with AutomaticKeepAlive
       ],
     );
   }
+}
+
+/// Mes consultado, con flechas para moverse.
+class _SelectorMes extends StatelessWidget {
+  const _SelectorMes({required this.mes, required this.alRetroceder, this.alAvanzar});
+  final String mes;
+  final VoidCallback alRetroceder;
+  final VoidCallback? alAvanzar;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 44,
+    decoration: BoxDecoration(
+      color: context.nt.tarjeta,
+      borderRadius: BorderRadius.circular(12),
+      border: Border.all(color: context.nt.borde),
+    ),
+    child: Row(
+      children: [
+        IconButton(
+          onPressed: alRetroceder,
+          icon: const Icon(Icons.chevron_left_rounded),
+          tooltip: 'Mes anterior',
+          visualDensity: VisualDensity.compact,
+        ),
+        Expanded(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.calendar_month_outlined, size: 17, color: context.nt.tenue),
+              const SizedBox(width: 8),
+              Text(mes, style: context.tema.textTheme.titleSmall),
+            ],
+          ),
+        ),
+        IconButton(
+          onPressed: alAvanzar,
+          icon: const Icon(Icons.chevron_right_rounded),
+          tooltip: 'Mes siguiente',
+          visualDensity: VisualDensity.compact,
+        ),
+      ],
+    ),
+  );
 }

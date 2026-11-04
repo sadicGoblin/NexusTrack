@@ -6,6 +6,7 @@ import '../componentes/listado.dart';
 import '../datos/repositorio.dart';
 import '../modelos/modelos.dart';
 import '../nucleo/formato.dart';
+import '../tema.dart';
 
 /// Qué conductor y qué remolque van con cada camión.
 class PantallaFlota extends ConsumerStatefulWidget {
@@ -34,17 +35,17 @@ class _PantallaFlotaState extends ConsumerState<PantallaFlota> {
                 onChanged: (t) => setState(() => _busqueda = normalizarBusqueda(t.trim())),
                 decoration: const InputDecoration(
                   hintText: 'Buscar camión, conductor o remolque…',
-                  prefixIcon: Icon(Icons.search),
+                  prefixIcon: Icon(Icons.search_rounded),
                   isDense: true,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               SizedBox(
                 width: double.infinity,
                 child: SegmentedButton<_Filtro>(
                   segments: const [
                     ButtonSegment(value: _Filtro.todos, label: Text('Todos')),
-                    ButtonSegment(value: _Filtro.conConductor, label: Text('Con conductor')),
+                    ButtonSegment(value: _Filtro.conConductor, label: Text('Asignados')),
                     ButtonSegment(value: _Filtro.sinConductor, label: Text('Sin conductor')),
                   ],
                   selected: {_filtro},
@@ -80,19 +81,32 @@ class _PantallaFlotaState extends ConsumerState<PantallaFlota> {
                   itemCount: lista.isEmpty ? 2 : lista.length + 1,
                   itemBuilder: (context, i) {
                     if (i == 0) {
+                      final estilo = context.tema.textTheme.labelMedium?.copyWith(
+                        color: context.nt.tenue,
+                      );
                       return Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 4, 20, 6),
-                        child: Text(
-                          '${todos.length} camiones · $conConductor con conductor',
-                          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+                        child: Row(
+                          children: [
+                            Text('${todos.length} camiones', style: estilo),
+                            const Spacer(),
+                            Container(
+                              width: 7,
+                              height: 7,
+                              decoration: BoxDecoration(
+                                color: context.nt.exito,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text('$conConductor con conductor', style: estilo),
+                          ],
                         ),
                       );
                     }
                     if (lista.isEmpty) {
                       return const Aviso(
-                        icono: Icons.local_shipping_outlined,
+                        icono: Icons.search_off_rounded,
                         mensaje: 'Ningún camión coincide.',
                       );
                     }
@@ -114,75 +128,100 @@ class _TarjetaCamion extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tema = Theme.of(context);
-    final tenue = tema.textTheme.bodySmall?.copyWith(color: tema.colorScheme.onSurfaceVariant);
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.local_shipping_outlined, color: tema.colorScheme.primary),
-                const SizedBox(width: 8),
-                Text(
-                  c.camion,
-                  style: tema.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+    final tema = context.tema;
+    final remolques = [
+      if (c.chasis != null) ('Chasis', c.chasis!),
+      if (c.thermo != null) ('Thermo', c.thermo!),
+      if (c.plataforma != null) ('Plataforma', c.plataforma!),
+    ];
+    return Tarjeta(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Patente(c.camion, grande: true),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      c.tipo,
+                      style: tema.textTheme.labelMedium?.copyWith(color: context.nt.tenue),
+                    ),
+                    Text(
+                      c.empresa,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: tema.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Text(c.tipo, style: tenue),
-                const Spacer(),
-                if (c.desde != null) Text('Desde ${fecha(c.desde)}', style: tenue),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: context.nt.relleno,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Insignia(
+                      c.conductor == null ? Icons.person_off_outlined : Icons.person_rounded,
+                      color: c.conductor == null ? context.nt.tenue : null,
+                      tamano: 34,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            c.conductor ?? 'Sin conductor asignado',
+                            style: tema.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: c.conductor == null ? context.nt.tenue : null,
+                            ),
+                          ),
+                          if (c.desde != null)
+                            Text(
+                              'Asignado desde ${fecha(c.desde)}',
+                              style: tema.textTheme.bodySmall,
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                if (remolques.isEmpty)
+                  Text('Sin remolque', style: tema.textTheme.bodySmall)
+                else
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 8,
+                    children: [
+                      for (final (tipo, patente) in remolques)
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(tipo, style: tema.textTheme.bodySmall),
+                            const SizedBox(width: 6),
+                            Patente(patente),
+                          ],
+                        ),
+                    ],
+                  ),
               ],
             ),
-            Padding(
-              padding: const EdgeInsets.only(left: 32, top: 2),
-              child: Text(c.empresa, style: tenue),
-            ),
-            const SizedBox(height: 8),
-            _Fila(
-              icono: Icons.person_outline,
-              texto: c.conductor ?? 'Sin conductor asignado',
-              apagado: c.conductor == null,
-            ),
-            _Fila(
-              icono: Icons.link,
-              texto: c.remolques.isEmpty
-                  ? 'Sin remolque'
-                  : [
-                      if (c.chasis != null) '${c.chasis} (chasis)',
-                      if (c.thermo != null) '${c.thermo} (thermo)',
-                      if (c.plataforma != null) '${c.plataforma} (plataforma)',
-                    ].join(' · '),
-              apagado: c.remolques.isEmpty,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _Fila extends StatelessWidget {
-  const _Fila({required this.icono, required this.texto, this.apagado = false});
-  final IconData icono;
-  final String texto;
-  final bool apagado;
-
-  @override
-  Widget build(BuildContext context) {
-    final tema = Theme.of(context);
-    final color = apagado ? tema.colorScheme.outline : tema.colorScheme.onSurface;
-    return Padding(
-      padding: const EdgeInsets.only(top: 4),
-      child: Row(
-        children: [
-          Icon(icono, size: 18, color: color),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Text(texto, style: tema.textTheme.bodyMedium?.copyWith(color: color)),
           ),
         ],
       ),

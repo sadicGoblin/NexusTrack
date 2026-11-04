@@ -5,12 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nexustrack_movil/datos/repositorio.dart';
+import 'package:nexustrack_movil/nucleo/formato.dart';
 import 'package:nexustrack_movil/modelos/modelos.dart';
 import 'package:nexustrack_movil/nucleo/sesion.dart';
 import 'package:nexustrack_movil/pantallas/detalles.dart';
 import 'package:nexustrack_movil/pantallas/flota.dart';
 import 'package:nexustrack_movil/pantallas/ingreso.dart';
+import 'package:nexustrack_movil/pantallas/inicio.dart';
 import 'package:nexustrack_movil/pantallas/listados.dart';
+import 'package:nexustrack_movil/tema.dart';
 
 List<Json> leer(String nombre) =>
     (jsonDecode(File('test/datos/$nombre.json').readAsStringSync()) as List).cast<Json>();
@@ -27,12 +30,16 @@ class _SesionFija extends SesionNotifier {
   Future<void> ingresar(String email, String password) async => correo = email;
 }
 
+/// Monta la pantalla en un teléfono de 390 × 844, con el tema de la app.
 Future<void> mostrar(WidgetTester tester, Widget pantalla, {List overrides = const []}) async {
+  tester.view.physicalSize = const Size(1170, 2532);
+  tester.view.devicePixelRatio = 3;
+  addTearDown(tester.view.reset);
   await tester.pumpWidget(
     ProviderScope(
       overrides: [...overrides],
       retry: (_, _) => null,
-      child: MaterialApp(home: pantalla),
+      child: MaterialApp(theme: tema(Brightness.light), home: pantalla),
     ),
   );
   await tester.pumpAndSettle();
@@ -58,6 +65,35 @@ void main() {
     await tester.tap(find.text('Ingresar'));
     await tester.pumpAndSettle();
     expect(sesion.correo, 'admin@nexustrack.cl');
+  });
+
+  testWidgets('el inicio saluda y muestra los montos del mes, pendientes y vencimientos', (
+    tester,
+  ) async {
+    final inicio = Inicio.desde(
+      jsonDecode(File('test/datos/inicio.json').readAsStringSync()) as Json,
+    );
+    final usuario = Usuario.desde({
+      'id': 1,
+      'email': 'ana@nexustrack.cl',
+      'nombre': 'Ana Pérez',
+      'rol': 'ADMIN',
+    });
+    await mostrar(
+      tester,
+      const PantallaInicio(),
+      overrides: [
+        sesionProvider.overrideWith(() => _SesionFija(ConSesion(usuario))),
+        inicioProvider.overrideWith((ref) async => inicio),
+      ],
+    );
+    expect(find.textContaining(', Ana'), findsOneWidget);
+    expect(find.text(pesos(inicio.contadores['montoValesDineroMes'])), findsOneWidget);
+    expect(find.text(inicio.retirosSinCarga.first.cliente), findsWidgets);
+
+    final v = inicio.vencimientos.first;
+    await tester.scrollUntilVisible(find.text('${v.tipo} · ${v.referencia}'), 300);
+    expect(find.text('En ${v.dias} días'), findsWidgets);
   });
 
   testWidgets('los fletes listan las órdenes vigentes y se pueden buscar', (tester) async {
@@ -94,7 +130,7 @@ void main() {
     );
     final conConductor = flota.firstWhere((c) => c.conductor != null);
     expect(find.text(conConductor.conductor!), findsOneWidget);
-    expect(find.textContaining('${conConductor.chasis} (chasis)'), findsOneWidget);
+    expect(find.text(conConductor.chasis!), findsOneWidget);
 
     await tester.tap(find.text('Sin conductor'));
     await tester.pumpAndSettle();

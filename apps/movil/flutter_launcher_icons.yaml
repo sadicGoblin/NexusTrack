@@ -1,0 +1,14 @@
+# Íconos de la app: dart run flutter_launcher_icons (las imágenes salen del logo de la web).
+flutter_launcher_icons:
+  image_path: "assets/icono/icono.png"
+  android: "ic_launcher"
+  min_sdk_android: 21
+  adaptive_icon_background: "#0B3D66"
+  adaptive_icon_foreground: "assets/icono/primer-plano.png"
+  ios: true
+  remove_alpha_ios: true
+  web:
+    generate: true
+    image_path: "assets/icono/icono.png"
+    background_color: "#F4F6F9"
+    theme_color: "#0B3D66"

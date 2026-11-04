@@ -29,6 +29,14 @@ String fecha(String? iso) {
 String fechaHora(String? iso, String? hora) =>
     hora == null || hora.isEmpty ? fecha(iso) : '${fecha(iso)} ${hora.substring(0, 5)}';
 
+/// Momento ISO (en UTC) en la hora del teléfono: 04/11/2026 13:31.
+String momento(String? iso) {
+  final d = iso == null ? null : DateTime.tryParse(iso)?.toLocal();
+  if (d == null) return '—';
+  String n(int x) => x.toString().padLeft(2, '0');
+  return '${n(d.day)}/${n(d.month)}/${d.year} ${n(d.hour)}:${n(d.minute)}';
+}
+
 /// Texto o guion si está vacío.
 String texto(String? valor) => valor == null || valor.trim().isEmpty ? '—' : valor;
 
@@ -48,6 +56,15 @@ const _meses = [
 ];
 
 String nombreMes(int anio, int mes) => '${_meses[mes - 1]} $anio';
+
+const _dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+
+/// «Miércoles 4 de noviembre».
+String fechaLarga(DateTime d) =>
+    '${_dias[d.weekday - 1]} ${d.day} de ${_meses[d.month - 1].toLowerCase()}';
+
+/// «nov» para el bloque de fecha de los vencimientos.
+String mesCorto(int mes) => _meses[mes - 1].substring(0, 3).toLowerCase();
 
 /// Primer y último día de un mes como AAAA-MM-DD.
 ({String desde, String hasta}) rangoMes(int anio, int mes) {
