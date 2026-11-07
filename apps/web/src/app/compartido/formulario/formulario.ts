@@ -51,6 +51,8 @@ export interface CampoFormulario {
   calcular?: (valores: Record<string, any>) => string;
   /** No editable una vez creado el registro. */
   soloCreacion?: boolean;
+  /** Lo asigna el sistema (por ejemplo, el código PK-001): no se muestra al crear ni se envía. */
+  automatico?: boolean;
 }
 
 const MENSAJES: Record<string, (e: any) => string> = {
@@ -99,7 +101,10 @@ export function construirFormulario(
     )
       validadores.push(Validators.max(c.max));
     controles[c.campo] = new FormControl(
-      { value: aControl(c, dto[c.campo]), disabled: !!c.soloCreacion && editando },
+      {
+        value: aControl(c, dto[c.campo]),
+        disabled: c.automatico || (!!c.soloCreacion && editando),
+      },
       validadores,
     );
   }
@@ -119,7 +124,7 @@ export function aEntrada(campos: CampoFormulario[], form: FormGroup): Record<str
   const valores = form.getRawValue() as Record<string, unknown>;
   const salida: Record<string, unknown> = {};
   for (const c of campos) {
-    if (c.tipo === 'calculado') continue;
+    if (c.tipo === 'calculado' || c.automatico) continue;
     let v = valores[c.campo];
     if (typeof v === 'string') {
       v = v.trim();

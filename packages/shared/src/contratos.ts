@@ -164,9 +164,8 @@ export interface PackingDto {
   cliente: string;
 }
 
+/** El código (PK-001, PK-002…) lo asigna siempre el sistema. */
 export interface PackingInput {
-  /** Si se omite, el sistema propone PK-001, PK-002, ... */
-  codigo?: Nullable<string>;
   nombre: string;
   ubicacion?: Nullable<string>;
   activo?: boolean;

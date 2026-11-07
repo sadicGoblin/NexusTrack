@@ -17,12 +17,22 @@ export class SecuenciasService {
     return sec.ultimo;
   }
 
-  /** Código con prefijo para mantenedores (PK-001, RT-001). */
+  /**
+   * Código con prefijo para mantenedores (PK-001, RT-001). Salta los que ya existen, por
+   * ejemplo uno escrito a mano cuando el código no era automático.
+   */
   async siguienteCodigo(
     tx: Tx,
     tipo: 'PACKING' | 'RUTA_TARIFA',
     prefijo: string,
   ): Promise<string> {
-    return `${prefijo}-${String(await this.siguiente(tx, tipo)).padStart(3, '0')}`;
+    const usado = (codigo: string) =>
+      tipo === 'PACKING'
+        ? tx.packing.findUnique({ where: { codigo }, select: { id: true } })
+        : tx.rutaTarifa.findUnique({ where: { codigo }, select: { id: true } });
+    for (;;) {
+      const codigo = `${prefijo}-${String(await this.siguiente(tx, tipo)).padStart(3, '0')}`;
+      if (!(await usado(codigo))) return codigo;
+    }
   }
 }

@@ -60,6 +60,10 @@ export class Mantenedor implements OnInit {
   readonly form = signal<FormGroup | null>(null);
 
   readonly puedeEditar = computed(() => this.sesion.puede(this.config().permiso));
+  /** Al crear se ocultan los campos que asigna el sistema. */
+  readonly campos = computed(() =>
+    this.editando() ? this.config().campos : this.config().campos.filter((c) => !c.automatico),
+  );
   readonly puedeEliminar = computed(
     () => !!this.config().eliminable && !!this.editando() && this.sesion.puede('eliminar'),
   );

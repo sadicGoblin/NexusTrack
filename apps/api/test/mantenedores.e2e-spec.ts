@@ -1,4 +1,5 @@
 import type { INestApplication } from '@nestjs/common';
+import { PrismaService } from '../src/prisma/prisma.service.js';
 import {
   catalogos,
   crearApp,
@@ -130,16 +131,39 @@ describe('Datos iniciales y mantenedores', () => {
         .expect(201)
     ).body;
     expect(p.codigo).toBe('PK-003');
-    const conCodigo = (
+    // El código lo asigna siempre el sistema: uno enviado se ignora y se saltan los ya usados.
+    const prisma = app.get(PrismaService);
+    await prisma.packing.update({
+      where: { id: p.id },
+      data: { codigo: 'PK-004' },
+    });
+    await prisma.packing.create({
+      data: {
+        codigo: 'PK-005',
+        nombre: 'PLANTA MANUAL',
+        clienteId: cliente.id,
+      },
+    });
+    const sur = (
       await c
         .post('/packings', {
-          codigo: 'cox5',
+          codigo: 'COX-005',
           nombre: 'planta sur',
           clienteId: cliente.id,
         })
         .expect(201)
     ).body;
-    expect(conCodigo.codigo).toBe('COX-005');
+    expect(sur.codigo).toBe('PK-006');
+    const editado = (
+      await c
+        .put(`/packings/${sur.id}`, {
+          codigo: 'OTRO-001',
+          nombre: 'planta sur',
+          clienteId: cliente.id,
+        })
+        .expect(200)
+    ).body;
+    expect(editado.codigo).toBe('PK-006');
     const r = (
       await c
         .post('/rutas-tarifas', {

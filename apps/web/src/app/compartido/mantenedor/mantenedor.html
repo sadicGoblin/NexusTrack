@@ -33,7 +33,7 @@
 >
   @if (form(); as f) {
     <form (submit)="$event.preventDefault(); guardar()" id="form-mantenedor">
-      <nt-campos [form]="f" [campos]="config().campos" [soloLectura]="!puedeEditar()" />
+      <nt-campos [form]="f" [campos]="campos()" [soloLectura]="!puedeEditar()" />
     </form>
   }
   <ng-template #footer>

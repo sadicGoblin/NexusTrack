@@ -117,3 +117,17 @@ test('la hora se escribe en 24 horas o se elige entre todas las horas y minutos'
   await hora.press('Tab');
   await expect(hora).toHaveValue('23:59');
 });
+
+test('el código del packing lo asigna el sistema: no se pide al crear ni se edita', async ({ page }) => {
+  await ingresar(page);
+  await page.goto('/mantenedores/packings');
+  await page.getByRole('button', { name: 'Nuevo packing' }).click();
+  const dialogo = page.getByRole('dialog');
+  await expect(dialogo.locator('#c-nombre')).toBeVisible();
+  await expect(dialogo.locator('#c-codigo')).toHaveCount(0);
+  await dialogo.getByRole('button', { name: 'Cerrar' }).click();
+
+  await page.getByRole('row', { name: /PK-001/ }).click();
+  await expect(dialogo.locator('#c-codigo')).toHaveValue('PK-001');
+  await expect(dialogo.locator('#c-codigo')).toBeDisabled();
+});

@@ -20,7 +20,7 @@ import type {
 } from '@nexustrack/shared';
 import { RequierePermiso, UsuarioActual } from '../comun/decoradores.js';
 import { enUso, noEncontrado } from '../comun/errores.js';
-import { Booleano, Codigo, Id, Texto } from '../comun/validacion.js';
+import { Booleano, Id, Texto } from '../comun/validacion.js';
 import { AuditoriaService } from '../comun/auditoria.service.js';
 import { ReferenciasService } from '../comun/referencias.service.js';
 import { SecuenciasService } from '../comun/secuencias.service.js';
@@ -28,7 +28,6 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import type { Prisma } from '../generated/prisma/client.js';
 
 class PackingDtoIn implements PackingInput {
-  @Codigo('Código') codigo?: string | null;
   @Texto('Packing', { max: 120, mayusculas: true }) nombre!: string;
   @Texto('Ubicación', { opcional: true, max: 250, mayusculas: true })
   ubicacion?: string | null;
@@ -83,9 +82,8 @@ export class PackingsService {
   async crear(dto: PackingDtoIn, u: UsuarioSesion): Promise<PackingDto> {
     return this.prisma.$transaction(async (tx) => {
       await this.refs.cliente(tx, dto.clienteId);
-      const codigo =
-        dto.codigo ||
-        (await this.secuencias.siguienteCodigo(tx, 'PACKING', 'PK'));
+      // El código siempre lo asigna el sistema, en orden (PK-001, PK-002…).
+      const codigo = await this.secuencias.siguienteCodigo(tx, 'PACKING', 'PK');
       const p = await tx.packing.create({
         data: {
           ...dto,
@@ -120,7 +118,6 @@ export class PackingsService {
         where: { id },
         data: {
           ...dto,
-          codigo: dto.codigo || antes.codigo,
           activo: dto.activo ?? antes.activo,
           actualizadoPorId: u.id,
         },

@@ -44,7 +44,7 @@ Empresas, clientes, packings, móviles, conductores y rutas y tarifas se manejan
 - **RUT**: se escribe con o sin puntos; el sistema lo formatea y valida el dígito verificador.
 - **Móviles**: las fechas de vencimiento en rojo están vencidas y en ámbar vencen en 30 días o menos. El tipo de empresa se toma de la empresa elegida.
 - **Conductores**: al elegir la empresa se sugiere el tipo (trabajador si la empresa es socia, tercero en otro caso). El % de comisión se escribe como porcentaje, por ejemplo 8.
-- **Packings y rutas**: si deja el código vacío, el sistema asigna PK-001 o RT-001.
+- **Packings**: el código lo asigna el sistema, en orden (PK-001, PK-002…); no se pide al crear ni se puede cambiar. **Rutas**: si deja el código vacío, se asigna RT-001; si lo escribe, el guion se agrega solo (COX005 queda COX-005).
 - **Rutas y tarifas**: el tramo se arma solo con origen, destino y unidad. La vigencia define en qué fechas se ofrece la tarifa.
 
 ### Asignaciones

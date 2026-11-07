@@ -85,7 +85,9 @@ Aplican los supuestos de la sección 2 del plan. Los que cambian el comportamien
 - **RUT.** Se valida el dígito verificador al crear o al cambiar el RUT. Los registros
   importados con RUT erróneo se pueden editar sin corregirlo en ese momento.
 - **Tipo de conductor.** Se sugiere Trabajador si la empresa es Socio y Tercero en otro caso.
-- **Códigos.** Packings y rutas sin código reciben PK-001… y RT-001… automáticamente.
+- **Códigos.** El de los packings lo asigna siempre el sistema (PK-001, PK-002…): el cliente
+  no sabía qué código seguía. Las rutas sin código reciben RT-001…; con código, va con guion
+  (COX-005). El correlativo salta los códigos que ya existen.
 
 ## 8. Tipos de datos
 
