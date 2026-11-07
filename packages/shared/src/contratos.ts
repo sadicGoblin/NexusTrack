@@ -2,7 +2,7 @@
  * Contratos de la API REST: formas de entrada (Input) y de salida (Dto).
  * Fechas siempre como texto AAAA-MM-DD; horas como HH:mm; montos en pesos enteros.
  */
-import type { TipoCatalogo, CodigoTipoMovil } from './catalogos.js';
+import type { TipoCatalogo, CodigoTipoMovil, GrupoMovil } from './catalogos.js';
 import type {
   Rol,
   TipoConductor,
@@ -290,10 +290,13 @@ export interface AsignacionInput {
 export interface SugerenciaAsignacionDto {
   empresaId: Nullable<number>;
   camionId: Nullable<number>;
+  /** El remolque asignado del tipo que lleva la trazabilidad; nulo si el camión no tiene uno. */
   remolqueId: Nullable<number>;
   tipoRemolque: Nullable<string>;
   /** Remolques vigentes del camión (chasis, thermo, plataforma) para elegir. */
-  remolques: { id: number; patente: string; tipo: string }[];
+  remolques: { id: number; patente: string; tipo: string; grupo: GrupoMovil }[];
+  /** Tipo de remolque que lleva la trazabilidad indicada (ver remolqueSegunTrazabilidad). */
+  remolquePedido: 'thermo' | 'chasis' | null;
 }
 
 export interface RutaTarifaDto {

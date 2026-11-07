@@ -287,6 +287,10 @@ export class OrdenRetiro {
     form
       .get('camionId')!
       .valueChanges.subscribe((id: number | null) => void this.sugerirPorCamion(id));
+    // La trazabilidad decide el remolque: PLANTA-PUERTO lleva thermo; los contenedores, chasis.
+    form
+      .get('trazabilidadId')!
+      .valueChanges.subscribe(() => void this.sugerirPorCamion(form.get('camionId')!.value, true));
     form.get('clienteId')!.valueChanges.subscribe((clienteId: number | null) => {
       const packing = this.maestros
         .packings()
@@ -303,6 +307,7 @@ export class OrdenRetiro {
     if (!form || !conductorId) return;
     const s = await this.api.get<SugerenciaAsignacionDto>('asignaciones/sugerencia', {
       conductorId,
+      trazabilidadId: form.get('trazabilidadId')!.value,
     });
     form.patchValue(
       {
@@ -314,21 +319,45 @@ export class OrdenRetiro {
     );
     this.sugerencia.set(
       s.camionId
-        ? `Camión, remolque y empresa completados desde la asignación vigente del conductor${s.remolques.length > 1 ? ` (tiene ${s.remolques.length} remolques asignados)` : ''}. Puede modificarlos.`
+        ? [
+            'Camión, remolque y empresa completados desde la asignación vigente del conductor.',
+            this.avisoRemolque(s),
+            'Puede modificarlos.',
+          ]
+            .filter(Boolean)
+            .join(' ')
         : 'El conductor no tiene asignación vigente: complete camión y remolque.',
     );
   }
 
-  private async sugerirPorCamion(camionId: number | null): Promise<void> {
+  /** Con [porTrazabilidad], un camión sin remolques asignados conserva el remolque elegido. */
+  private async sugerirPorCamion(camionId: number | null, porTrazabilidad = false): Promise<void> {
     const form = this.form();
     if (!form || !camionId) return;
-    const s = await this.api.get<SugerenciaAsignacionDto>('asignaciones/sugerencia', { camionId });
+    const s = await this.api.get<SugerenciaAsignacionDto>('asignaciones/sugerencia', {
+      camionId,
+      trazabilidadId: form.get('trazabilidadId')!.value,
+    });
+    if (porTrazabilidad && !s.remolques.length) return;
     form.patchValue({ remolqueId: s.remolqueId }, { emitEvent: false });
     this.sugerencia.set(
-      s.remolqueId
-        ? 'Remolque completado desde la asignación vigente del camión.'
+      s.remolques.length
+        ? ['Remolque según la asignación vigente del camión.', this.avisoRemolque(s)]
+            .filter(Boolean)
+            .join(' ')
         : 'El camión no tiene remolque asignado.',
     );
+  }
+
+  /** Qué remolque se eligió y por qué, o qué falta asignar. */
+  private avisoRemolque(s: SugerenciaAsignacionDto): string {
+    const pedido = s.remolquePedido;
+    if (!pedido) {
+      return s.remolques.length > 1 ? `Tiene ${s.remolques.length} remolques asignados.` : '';
+    }
+    return s.remolqueId
+      ? `La trazabilidad lleva ${pedido}: se eligió el ${pedido} asignado.`
+      : `La trazabilidad lleva ${pedido} y el camión no tiene uno asignado: elija el remolque.`;
   }
 
   async guardar(): Promise<void> {

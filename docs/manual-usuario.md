@@ -60,7 +60,7 @@ Muestra cada camión con su conductor y remolques vigentes. Es lo que permite co
 
 **Operación → Órdenes de retiro → Nueva orden de retiro.**
 
-Al elegir el **conductor**, el sistema completa empresa, camión y remolque según su asignación vigente. Puede cambiarlos. Al elegir otro camión, se propone su remolque. Al presionar **Emitir** se asigna el número correlativo.
+Al elegir el **conductor**, el sistema completa empresa, camión y remolque según su asignación vigente. Puede cambiarlos. Al elegir otro camión, se propone su remolque. El remolque depende de la **trazabilidad**: **PLANTA-PUERTO** (y las que dicen THERMO) llevan el **thermo** asignado al camión; las demás mueven contenedores y llevan el **chasis**. Si el camión no tiene asignado el tipo que corresponde, el remolque queda vacío y un aviso pide elegirlo. Al presionar **Emitir** se asigna el número correlativo.
 
 Desde la orden de retiro se crean los demás documentos, en la sección **Documentos del flete**.
 

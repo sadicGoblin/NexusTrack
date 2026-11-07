@@ -98,6 +98,23 @@ export const TIPOS_REMOLQUE: readonly CodigoTipoMovil[] = [
   ...GRUPOS_MOVIL.plataforma,
 ];
 
+/**
+ * Remolque que lleva cada trazabilidad: PLANTA-PUERTO y las que dicen THERMO van con thermo;
+ * las demás mueven contenedores, en chasis. Sin trazabilidad no hay preferencia.
+ */
+export function remolqueSegunTrazabilidad(
+  trazabilidad: string | null | undefined,
+): 'thermo' | 'chasis' | null {
+  if (!trazabilidad?.trim()) return null;
+  const t = trazabilidad
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .replace(/[^A-Z]+/g, ' ')
+    .trim();
+  return t === 'PLANTA PUERTO' || t.includes('THERMO') ? 'thermo' : 'chasis';
+}
+
 /** Códigos fijos de las categorías de empresa. */
 export const CodigoCategoriaEmpresa = {
   SOCIO: 'SOCIO',

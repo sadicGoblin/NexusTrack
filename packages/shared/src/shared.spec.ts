@@ -16,6 +16,7 @@ import {
   limpiarRut,
   armarCuenta,
   rangoMes,
+  remolqueSegunTrazabilidad,
   resumirCuenta,
   saldoAntesDe,
   sentidoSaldo,
@@ -77,6 +78,14 @@ describe('montos y cálculos', () => {
   });
   it('genera el tramo como en la planilla', () => {
     expect(generarTramo('TALCA', 'VALPARAISO', 'CONTENEDOR')).toBe('TALCA - VALPARAISO - CONTENEDOR');
+  });
+  it('elige el remolque según la trazabilidad', () => {
+    expect(remolqueSegunTrazabilidad('PLANTA-PUERTO')).toBe('thermo');
+    expect(remolqueSegunTrazabilidad('Planta - Puerto')).toBe('thermo');
+    expect(remolqueSegunTrazabilidad('INTERPLANTA THERMO')).toBe('thermo');
+    expect(remolqueSegunTrazabilidad('DEPÓSITO-PLANTA-PUERTO')).toBe('chasis');
+    expect(remolqueSegunTrazabilidad('INTERPLANTA CONTENEDOR')).toBe('chasis');
+    expect(remolqueSegunTrazabilidad(null)).toBeNull();
   });
   it('pone guion a los códigos de packings y rutas', () => {
     expect(formatearCodigo('COX005')).toBe('COX-005');

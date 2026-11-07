@@ -14,6 +14,7 @@ import { ApiTags } from '@nestjs/swagger';
 import {
   GRUPOS_MOVIL,
   hoyIso,
+  remolqueSegunTrazabilidad,
   type AsignacionDto,
   type AsignacionInput,
   type SugerenciaAsignacionDto,
@@ -49,6 +50,7 @@ class FiltroHistorial {
 class FiltroSugerencia {
   @Id('Conductor', { opcional: true }) conductorId?: number;
   @Id('Camión', { opcional: true }) camionId?: number;
+  @Id('Trazabilidad', { opcional: true }) trazabilidadId?: number;
 }
 
 const include = {
@@ -131,15 +133,23 @@ export class AsignacionesService {
 
   /**
    * Autocompletado de la orden de retiro: desde un conductor (camión, empresa y remolque de su
-   * asignación vigente) o desde un camión (sus remolques vigentes).
+   * asignación vigente) o desde un camión (sus remolques vigentes). Con trazabilidad, el remolque
+   * es el del tipo que ella lleva (PLANTA-PUERTO, thermo; contenedores, chasis), o ninguno.
    */
   async sugerencia(f: FiltroSugerencia): Promise<SugerenciaAsignacionDto> {
+    const trazabilidad = f.trazabilidadId
+      ? await this.prisma.catalogoItem.findUnique({
+          where: { id: f.trazabilidadId },
+        })
+      : null;
+    const remolquePedido = remolqueSegunTrazabilidad(trazabilidad?.valor);
     const vacia: SugerenciaAsignacionDto = {
       empresaId: null,
       camionId: null,
       remolqueId: null,
       tipoRemolque: null,
       remolques: [],
+      remolquePedido,
     };
     let asignacion: Fila | null = null;
     let empresaId: number | null = null;
@@ -164,19 +174,25 @@ export class AsignacionesService {
         null;
     }
     if (!asignacion) return { ...vacia, empresaId };
-    const remolques = [
-      asignacion.thermo,
-      asignacion.chasis,
-      asignacion.plataforma,
-    ]
-      .filter((m): m is NonNullable<typeof m> => !!m)
-      .map((m) => ({ id: m.id, patente: m.patente, tipo: m.tipo.valor }));
+    const remolques = (
+      [
+        ['thermo', asignacion.thermo],
+        ['chasis', asignacion.chasis],
+        ['plataforma', asignacion.plataforma],
+      ] as const
+    ).flatMap(([grupo, m]) =>
+      m ? [{ id: m.id, patente: m.patente, tipo: m.tipo.valor, grupo }] : [],
+    );
+    const elegido = remolquePedido
+      ? remolques.find((r) => r.grupo === remolquePedido)
+      : remolques[0];
     return {
       empresaId: empresaId ?? asignacion.empresaId,
       camionId: asignacion.camionId,
-      remolqueId: remolques[0]?.id ?? null,
-      tipoRemolque: remolques[0]?.tipo ?? null,
+      remolqueId: elegido?.id ?? null,
+      tipoRemolque: elegido?.tipo ?? null,
       remolques,
+      remolquePedido,
     };
   }
 

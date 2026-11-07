@@ -274,6 +274,40 @@ describe('Datos iniciales y mantenedores', () => {
       tipoRemolque: 'THERMO',
     });
 
+    // La trazabilidad decide el remolque: PLANTA-PUERTO lleva thermo; un contenedor, chasis.
+    const segun = async (trazabilidad: string) =>
+      (
+        await c
+          .get(
+            `/asignaciones/sugerencia?camionId=${rhgc58.id}&trazabilidadId=${id('TRAZABILIDAD', trazabilidad)}`,
+          )
+          .expect(200)
+      ).body;
+    expect(await segun('PLANTA-PUERTO')).toMatchObject({
+      remolqueId: thermo.id,
+      remolquePedido: 'thermo',
+    });
+    expect(await segun('DEPÓSITO-PLANTA-PUERTO')).toMatchObject({
+      remolqueId: null,
+      remolquePedido: 'chasis',
+    });
+    await c
+      .post('/asignaciones', {
+        camionId: rhgc58.id,
+        conductorId: luis.id,
+        chasisId: chasis.id,
+        thermoId: thermo.id,
+        fechaAsignacion: '2026-10-25',
+      })
+      .expect(201);
+    expect(await segun('PLANTA-PUERTO')).toMatchObject({
+      remolqueId: thermo.id,
+    });
+    expect(await segun('DEPÓSITO-PLANTA-PUERTO')).toMatchObject({
+      remolqueId: chasis.id,
+      tipoRemolque: chasis.tipo,
+    });
+
     // Un remolque en la casilla equivocada se rechaza.
     await c
       .post('/asignaciones', {
