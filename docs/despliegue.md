@@ -154,10 +154,26 @@ alias dc='docker compose -f docker/compose.vps.yml --env-file .env.vps'
 docker cp /tmp/listado.xlsx "$(dc ps -q api)":/tmp/listado.xlsx
 dc exec api npx tsx prisma/importar-listado.ts /tmp/listado.xlsx            # simulación
 dc exec api npx tsx prisma/importar-listado.ts /tmp/listado.xlsx --aplicar  # guarda
-dc exec api rm /tmp/listado.xlsx && rm /tmp/listado.xlsx
+dc exec -u 0 api rm /tmp/listado.xlsx && rm /tmp/listado.xlsx   # la API no corre como root
 ```
 
 Respalde la base antes de aplicar (ver Respaldos).
+
+## Importar órdenes de retiro
+
+`prisma/importar-retiros.ts` carga órdenes de retiro desde la planilla del cliente (hoja con el
+encabezado «Fecha de Orden de Retiro»). Valida cada fila como la pantalla (conductor, camión,
+remolque, empresa, cliente, ciudades, depósitos, packings del cliente y puerto deben existir y
+estar activos) y salta las que ya están registradas (misma fecha, conductor, camión, cliente y
+carga), así que se puede repetir sin duplicar. El número lo asigna el sistema en orden de fecha y
+las órdenes quedan Abiertas. Mismo procedimiento que el listado:
+
+```bash
+docker cp /tmp/retiros.xlsx "$(dc ps -q api)":/tmp/retiros.xlsx
+dc exec api npx tsx prisma/importar-retiros.ts /tmp/retiros.xlsx            # simulación
+dc exec api npx tsx prisma/importar-retiros.ts /tmp/retiros.xlsx --aplicar  # guarda
+dc exec -u 0 api rm /tmp/retiros.xlsx && rm /tmp/retiros.xlsx
+```
 
 ## Sesión y navegadores
 
