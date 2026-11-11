@@ -89,6 +89,13 @@ tr.clicable {
     overflow: hidden;
     background: var(--p-content-background);
     box-shadow: var(--nt-tarjeta-sombra);
+    --p-datatable-row-hover-background: var(--nt-tabla-hover);
+  }
+
+  /* Filas alternadas para seguir la lectura en tablas anchas. No se usa stripedRows de PrimeNG
+     porque con plantilla propia no marca las filas impares. */
+  .p-datatable-tbody > tr:nth-child(even) {
+    background: var(--nt-tabla-alterna);
   }
 
   .p-datatable-header {
